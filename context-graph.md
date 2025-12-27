@@ -58,9 +58,29 @@ Source: [Anthropic - Code Execution](https://www.anthropic.com/engineering/code-
 | search_tools with detail levels | name_only → with_description → full_schema |
 | State persistence in workspace | Resume across executions |
 
+**Progressive Disclosure Pattern**:
+
+> "Models are great at navigating filesystems. Presenting tools as code on a filesystem allows models to read tool definitions on-demand, rather than reading them all up-front."
+
+**Detail Levels for search_tools**:
+
+| Level | Content | When to Use |
+|-------|---------|-------------|
+| `name_only` | Just tool names | Discovery phase - what's available |
+| `with_description` | Name + description | Filtering - is this relevant? |
+| `full_schema` | Complete definition with schemas | Actual usage - need to call it |
+
+**Token Impact**: 150,000 → 2,000 tokens = **98.7% savings**
+
 **Key Insight**: "Tool definitions overload the context window" + "intermediate tool results consume additional tokens"
 
-**Implication for Context Graph**: Query traces in MCP sandbox, return only summaries. Never load raw traces into context.
+**Implication for Context Graph**: Apply same pattern to trace queries.
+
+| Operation | Without Progressive Disclosure | With Progressive Disclosure |
+|-----------|-------------------------------|----------------------------|
+| Find similar traces | Load all 1000 traces (~50K tokens) | `query_traces(q, level="metadata")` (~500 tokens) |
+| Get trace details | Load full trace | `get_trace(id, level="full")` (~2K tokens) |
+| Search patterns | Load entire graph | `extract_patterns(level="summary")` (~1K tokens) |
 
 ### 2.3 Long-Running Harness
 
@@ -353,3 +373,4 @@ On Start: echo '{"agent": "tester-agent"}' > /tmp/active-agent.json
 *Last Updated: 2025-12-28*
 *Status: Hook Research Complete - Ready for Implementation*
 *Resolved: Runtime guards (6.1), Verified completion (6.3), Subagent ID (6.4)*
+*Updated: Progressive disclosure pattern with detail levels (metadata/summary/full)*

@@ -410,6 +410,37 @@ sys.exit(0)
 | `extract_patterns()` | Aggregate traces into patterns | End of session or on-demand |
 | `create_guard()` | Generate new enforcement hook | When pattern threshold met |
 
+### Progressive Disclosure for Context Graph
+
+Pattern from Anthropic's MCP article: **150K → 2K tokens (98.7% savings)**
+
+> "Models can read tool definitions on-demand, rather than loading them all up-front."
+
+**Apply to trace queries:**
+
+| Detail Level | Returns | Token Cost | When to Use |
+|--------------|---------|------------|-------------|
+| `metadata` | id, type, timestamp, agent | ~500 | Discovery - what exists |
+| `summary` | metadata + what/why | ~1K | Relevance check - is this useful? |
+| `full` | Complete trace with context | ~2K | Actual usage - need full details |
+
+**Query pattern:**
+```python
+# Step 1: Find candidate traces (lightweight)
+candidates = query_traces("tested without evidence", level="metadata")
+
+# Step 2: Get summaries to filter relevant ones
+summaries = [get_trace(id, level="summary") for id in candidates[:5]]
+
+# Step 3: Load full details only for most relevant
+relevant = get_trace(best_match, level="full")
+```
+
+**Token savings:**
+- Without: Load 1000 traces × 50 tokens = 50K tokens
+- With: metadata query + 5 summaries + 1 full = ~500 + 5K + 2K = 7.5K tokens
+- **Savings: 85%**
+
 ### Trace Schema
 
 ```json
@@ -595,3 +626,4 @@ Health check is already in coding-agent. No need for separate verifier.
 - *Added hook blocking mechanisms (exit 2, JSON decision, updatedInput)*
 - *Added SubagentStop research: no agent_id field, use state file handshake*
 - *Updated force-tester-completion.py with agent identification workaround*
+- *Added progressive disclosure pattern from MCP article (98.7% token savings)*
