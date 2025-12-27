@@ -26,6 +26,44 @@ Academic and industry sources backing context graph patterns.
 
 ## Anthropic Engineering Articles
 
+### Context Engineering
+
+Source: [Anthropic - Effective Context Engineering for AI Agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+
+**Definition**: The art and science of curating what goes into the limited context window from constantly evolving possible information.
+
+> "Context, therefore, must be treated as a finite resource with diminishing marginal returns."
+
+**Key Concepts**:
+
+| Concept | Description |
+|----------|-------------|
+| Attention Budget | n² pairwise relationships for n tokens creates "context rot" |
+| Context Engineering vs Prompt Engineering | Managing all context (tools, history, data) vs just system prompt |
+| Just-in-Time Retrieval | Lightweight identifiers (file paths, links) → load at runtime |
+| Progressive Disclosure | Agents incrementally discover relevant context through exploration |
+
+**Long-Horizon Task Strategies**:
+
+| Strategy | Use Case | Token Target |
+|----------|----------|--------------|
+| **Compaction** | Extensive back-and-forth | Summarize + recent 5 files |
+| **Structured Note-Taking** | Iterative development | External memory (NOTES.md, to-do lists) |
+| **Sub-Agent Architectures** | Complex research/analysis | 1K-2K token returns |
+
+**Sub-Agent Distillation Pattern**:
+
+> "Specialized sub-agents can handle focused tasks with clean context windows. Each subagent might explore extensively, using tens of thousands of tokens, but returns only a condensed, distilled summary (often 1,000-2,000 tokens)."
+
+**Preserve vs Discard** (Compaction):
+
+| Preserve | Discard |
+|----------|---------|
+| Architectural decisions | Redundant tool outputs |
+| Unresolved bugs | Raw results (once used) |
+| Implementation details | Verbose logs |
+| Recent 5 files | Historical context |
+
 ### Agent Skills
 
 Source: [Anthropic - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)

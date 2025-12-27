@@ -171,6 +171,27 @@ Token-efficient MCP tools for data processing and code execution.
 - `search_tools` - Find tools by keyword (95% savings)
 - `batch_process_csv` - Multiple CSV files (80% savings)
 
+### .skills/browser-testing/
+
+Web application testing using Claude Code's Chrome integration.
+
+| File | When to Read | Content |
+|------|--------------|---------|
+| SKILL.md | Always (metadata) | Prerequisites, capabilities, tool catalog |
+| patterns.md | Designing test scenarios | Test patterns, debugging strategies |
+| examples.md | Need concrete examples | 15+ real-world test cases with prompts |
+
+**Prerequisites**: Chrome extension 1.0.36+, Claude Code 2.0.73+, paid plan
+
+**Key capabilities**:
+- Live debugging - Read console errors and fix code
+- Local testing - Test localhost URLs during development
+- Console reading - Filter logs by pattern (ERROR, WARN)
+- Form automation - Fill and submit forms
+- Authenticated apps - Uses browser login (Gmail, Notion, Docs)
+- GIF recording - Record interactions for demos
+- Data extraction - Pull structured info from web pages
+
 **How skills work**:
 1. Agent loads SKILL.md metadata (name + description)
 2. When relevant, agent reads specific .md file for details
@@ -212,6 +233,7 @@ Token-efficient MCP tools for data processing and code execution.
 | Understand the project | SUMMARY.md |
 | See the architecture | DESIGN.md (Layer 1-3) |
 | Implement a hook | .skills/enforcement/hook-templates.md |
+| Test web applications | .skills/browser-testing/SKILL.md |
 | Learn coordination patterns | .skills/coordination/SKILL.md |
 | Design learning system | .skills/context-graph/learning-loops.md |
 | Process data efficiently | .skills/token-efficient/SKILL.md |
