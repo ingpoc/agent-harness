@@ -146,6 +146,68 @@ You are the orchestrator. You do NOT implement. You delegate.
 - ALWAYS spawn, wait, handle result
 ```
 
+### Compaction Strategy (Sub-Agent Returns)
+
+From [Anthropic Context Engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents):
+
+**Sub-agent distillation pattern**: Specialized agents return condensed summaries (1K-2K tokens), not full context
+
+| Agent Returns | What to Include | Token Budget |
+|---------------|-----------------|--------------|
+| **coding-agent** | Files changed, tests run, issues found | ~1K tokens |
+| **tester-agent** | Test results, evidence paths, pass/fail | ~1K tokens |
+| **initializer-agent** | Feature list, setup summary, next steps | ~1.5K tokens |
+
+**What to discard** (compaction):
+- Redundant tool outputs
+- Raw logs (once analyzed)
+- Verbose intermediate results
+- Historical context beyond recent 5 files
+
+**What to preserve**:
+- Architectural decisions
+- Unresolved bugs
+- Implementation details
+- Recent work artifacts
+
+### Handoff Protocol
+
+From multi-agent coordination research:
+
+| Element | Description | Example |
+|---------|-------------|---------|
+| **Precondition** | What must be complete | Code written, linted |
+| **Artifacts** | What's passed along | File paths, test results |
+| **Postcondition** | What next agent expects | Ready-to-test state |
+| **Rollback** | How to handle failures | Return to previous state |
+
+**Command object schema** (for handoffs):
+```json
+{
+  "command": {
+    "agent": "tester-agent",
+    "task": "validate_feature",
+    "context": {
+      "feature_id": "PT-003",
+      "files_changed": ["src/feature.py"],
+      "previous_state": "coding"
+    },
+    "success_criteria": {
+      "tests_pass": true,
+      "coverage_min": 80
+    },
+    "next_agent": "main"
+  }
+}
+```
+
+**Handoff best practices**:
+- Explicit context (command objects, not implicit state)
+- Verification (next agent validates preconditions)
+- Idempotency (handoff safe to retry)
+- Observability (log every handoff with context)
+- Timeout (fail fast if agent unresponsive)
+
 ---
 
 ## Layer 2: Enforcement
@@ -441,6 +503,79 @@ relevant = get_trace(best_match, level="full")
 - With: metadata query + 5 summaries + 1 full = ~500 + 5K + 2K = 7.5K tokens
 - **Savings: 85%**
 
+### Learning Loop Patterns
+
+From research: [Reflexion (NeurIPS 2023)](https://arxiv.org/abs/2303.11366), [Spotify Engineering](https://engineering.atspotify.com/2025/12/feedback-loops-background-coding-agents-part-3), [OODA Loop](https://tao-hpu.medium.com/agent-feedback-loops-from-ooda-to-self-reflection-92eb9dd204f6)
+
+#### Reflexion Pattern (Two-Phase Reflection)
+
+**Purpose**: Verbal reinforcement learning for across-trial improvement
+
+**Key Mechanism**: Separate error analysis from solution generation
+
+```
+1. Agent executes action
+2. Receive feedback (test results, errors)
+3. REFLECT: "What assumption failed?" (LLM call #1)
+4. GENERATE: "How to prevent this?" (LLM call #2)
+5. Store in episodic memory
+6. Retrieve on next attempt
+```
+
+**Context injection**: `LAST_ATTEMPT_AND_REFLEXION` in next prompt
+
+#### OODA Loop (Within-Trial Adaptation)
+
+**Purpose**: Real-time adaptation during task execution
+
+| Stage | Action | Context |
+|-------|--------|---------|
+| **Observe** | Gather tool outputs, test results | Raw data |
+| **Orient** | Apply past reflections + current context | Retrieved memories |
+| **Decide** | Select action based on understanding | Planning |
+| **Act** | Execute → generates new observations | Tool calls |
+
+**Layered approach**: OODA (within-trial) + Reflexion (across-trial) = complete learning system
+
+#### Spotify Verification Loops
+
+**Architecture**:
+
+| Component | Purpose | Metric |
+|-----------|---------|--------|
+| **Deterministic verifiers** | Maven/npm/build/test tools | Run on every state transition |
+| **LLM Judge** | Evaluate diff + prompt | Vetoes 25% of sessions |
+| **Stop hooks** | Block PR without verification | 50% course-correct after veto |
+
+**Safety principle**: Agent doesn't know what verifiers do internally—prevents prompt injection attacks
+
+#### Staged Promotion
+
+```
+[EXPERIMENT] → [VALIDATE] → [PRODUCTION]
+     ↓              ↓               ↓
+  Test suite    Auto-rollback   Versioned memory
+```
+
+**When to update vs keep existing behavior**:
+
+| Keep Existing | Update Behavior |
+|---------------|-----------------|
+| Predictability critical | Performance degradation detected |
+| Limited labeled feedback | Data distribution shifts |
+| Preventing catastrophic forgetting | New capabilities needed |
+| Regulatory/safety requirements | Tool use optimization needed |
+
+#### Anti-Patterns Checklist
+
+| Anti-Pattern | Symptom | Detection |
+|--------------|---------|-----------|
+| **Reflection without action** | Stored traces never retrieved | Check retrieval frequency |
+| **Over-indexing recent failures** | Rapid strategy oscillation | Monitor variance across attempts |
+| **Generic reflections** | "Reflect on performance" | Use structured prompts |
+| **Self-scoring without validation** | Agent rates itself highly | Compare with external KPIs |
+| **Overthinking** | Excessive planning, no action | Set max iteration limits |
+
 ### Trace Schema
 
 ```json
@@ -619,11 +754,15 @@ Health check is already in coding-agent. No need for separate verifier.
 ---
 
 *Updated: 2025-12-28*
-*Status: Enforcement mechanisms confirmed - Ready for implementation*
+*Status: Research Complete - Ready for Implementation*
 
 *Changelog:*
 
 - *Added hook blocking mechanisms (exit 2, JSON decision, updatedInput)*
 - *Added SubagentStop research: no agent_id field, use state file handshake*
-- *Updated force-tester-completion.py with agent identification workaround*
 - *Added progressive disclosure pattern from MCP article (98.7% token savings)*
+- *Added Learning Loop Patterns: Reflexion (two-phase), OODA, Spotify verification*
+- *Added Compaction Strategy for sub-agent returns (1K-2K token distillation)*
+- *Added Handoff Protocol with command object schema*
+- *Added Staged Promotion pattern (Experiment → Validate → Production)*
+- *Added Anti-Patterns checklist for learning systems*

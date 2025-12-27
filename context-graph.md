@@ -107,6 +107,62 @@ Source: [Anthropic - Effective Harnesses](https://www.anthropic.com/engineering/
 4. Execute init.sh, run basic tests
 5. Fix existing bugs before new features
 
+### 2.4 Context Engineering
+
+Source: [Anthropic - Effective Context Engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+
+**Definition**: The art and science of curating what goes into the limited context window from constantly evolving possible information.
+
+**Core Principle**: Finding the **smallest possible set of high-signal tokens** that maximize desired outcomes.
+
+> "Context, therefore, must be treated as a finite resource with diminishing marginal returns."
+
+**Context Management Patterns**:
+
+| Pattern | Purpose | Trade-off |
+|---------|---------|-----------|
+| **Just-in-time retrieval** | Load data at runtime via tools | Slower but more accurate |
+| **Progressive disclosure** | Incremental discovery through exploration | Requires good tools |
+| **Compaction** | Summarize + reset context window | Risk of losing subtle context |
+| **Structured note-taking** | External memory, pull when needed | Minimal overhead |
+| **Sub-agent architectures** | Specialized agents return distilled summaries | Coordination complexity |
+
+**Compaction Strategy**:
+
+| Preserve | Discard |
+|----------|---------|
+| Architectural decisions | Redundant tool outputs |
+| Unresolved bugs | Raw results (once used) |
+| Implementation details | Verbose logs |
+| Recent 5 files | Historical context |
+
+**Sub-Agent Distillation Pattern**:
+
+> "Specialized sub-agents can handle focused tasks with clean context windows. Each subagent might explore extensively, using tens of thousands of tokens, but returns only a condensed, distilled summary (often 1,000-2,000 tokens)."
+
+**Attention Budget**:
+
+Every token depletes attention budget; n² pairwise relationships for n tokens creates "context rot."
+
+**Decision Framework**:
+
+| Use This When | Pattern |
+|---------------|---------|
+| Extensive back-and-forth required | Compaction |
+| Iterative development with milestones | Note-taking |
+| Complex research/analysis with parallel exploration | Multi-agent |
+
+**Key Quote**:
+
+> "As models become more capable, the challenge isn't just crafting the perfect prompt—it's thoughtfully curating what information enters the model's limited attention budget at each step."
+
+**Implication for Context Graph**:
+
+- Store only high-signal traces (not every interaction)
+- Use progressive disclosure for retrieval (metadata → summary → full)
+- Apply compaction when context approaches limits
+- Sub-agents return distilled summaries, not full context
+
 ---
 
 ## 3. Memory Systems Research
@@ -148,6 +204,115 @@ Source: [arXiv - Memory in the Age of AI Agents](https://arxiv.org/abs/2512.1356
 | File-based | Text only | Zero | N/A |
 
 **Recommendation**: Qdrant Local or sqlite-vec embedded in token-efficient MCP server.
+
+### 3.4 Learning Loop Patterns
+
+Sources: [Reflexion Paper (NeurIPS 2023)](https://arxiv.org/abs/2303.11366), [Spotify Engineering](https://engineering.atspotify.com/2025/12/feedback-loops-background-coding-agents-part-3), [OODA Loop Analysis](https://tao-hpu.medium.com/agent-feedback-loops-from-ooda-to-self-reflection-92eb9dd204f6)
+
+**Three Key Patterns**:
+
+| Pattern | Source | Purpose |
+|---------|--------|---------|
+| **Reflexion** | Shinn et al., NeurIPS 2023 | Verbal reinforcement learning |
+| **OODA Loop** | Military strategy → AI agents | Real-time adaptation |
+| **Verification Loops** | Spotify production systems | Quality gates with veto power |
+
+#### Reflexion Pattern (Two-Phase Reflection)
+
+**Architecture**: Actor → Evaluator → Self-Reflection → Memory
+
+**Key Mechanism**: Separate error analysis from solution generation (two LLM calls)
+
+```
+1. Agent generates action
+2. Receive feedback (test results, errors)
+3. REFLECT: "What assumption failed?" (LLM call #1)
+4. GENERATE: "How to prevent this?" (LLM call #2)
+5. Store reflection in episodic memory
+6. Retrieve on next attempt
+```
+
+**Critical Design**: `LAST_ATTEMPT_AND_REFLEXION` context injection
+
+**Result**: Dramatic improvement on tasks requiring multi-step reasoning
+
+#### OODA Loop (Within-Trial Adaptation)
+
+**Four Stages**:
+
+| Stage | Action | Agent Context |
+|-------|--------|---------------|
+| **Observe** | Gather tool outputs, test results | Raw data |
+| **Orient** | Apply past reflections + current context | Retrieved memories |
+| **Decide** | Select action based on understanding | Planning |
+| **Act** | Execute → generates new observations | Tool calls |
+
+**Key Insight**: OODA handles within-trial adaptation; Reflexion handles across-trial learning. Layer both for complete system.
+
+#### Spotify Verification Loops (Production Quality Gates)
+
+**Architecture**:
+
+- **Deterministic verifiers**: Maven/npm/build/test tools
+- **LLM Judge**: Evaluates diff + prompt (prevents scope creep)
+- **Stop hooks**: Run all verifiers before PR creation
+
+**Metrics**:
+- Judge vetoes ~25% of agent sessions
+- 50% of vetoed sessions successfully course-correct
+
+**Safety Principle**: Agent doesn't know what verifiers do internally—only that they can be called. Prevents prompt injection attacks.
+
+#### Complete Learning Loop (Synthesized)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OUTER LOOP (Across Trials)                │
+│                                                               │
+│  Agent executes → Feedback → REFLEXION → Store → Validate    │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    INNER LOOP (Within Trial)                 │
+│                                                               │
+│  OBSERVE → ORIENT → DECIDE → ACT → repeat                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### When to Update vs Keep Existing Behavior
+
+| KEEP Existing | UPDATE Behavior |
+|---------------|-----------------|
+| Predictability critical | Data distribution shifts |
+| Limited labeled feedback | Performance degradation detected |
+| Preventing catastrophic forgetting | New capabilities needed |
+| Regulatory/safety requirements | Environment changes |
+| Core features stable | Tool use optimization needed |
+
+#### Staged Promotion (Production Pattern)
+
+```
+[EXPERIMENT] → [VALIDATE] → [PRODUCTION]
+     ↓              ↓               ↓
+  Test suite    Auto-rollback   Versioned memory
+```
+
+**Anti-Patterns to Avoid**:
+
+| Anti-Pattern | Symptom | Fix |
+|--------------|---------|-----|
+| Reflection without action | Stored reflections never retrieved | Ensure retrieval surfaces relevant reflections |
+| Over-indexing recent failures | Rapid oscillation between strategies | Balance recent with proven strategies |
+| Generic reflections | "Reflect on performance" → useless | Use structured: "What assumption failed?" |
+| Self-scoring without validation | Agent rates itself highly while failing | Compare self-assessment against external KPIs |
+| Overthinking | Excessive planning without acting | Set max reflection iteration limits |
+
+**Implication for Context Graph**:
+
+- Capture corrections with structured reflection (two LLM calls)
+- Use OODA for within-trial decisions
+- Implement staged promotion (experiment → validate → production)
+- Apply verification loops before state transitions
 
 ---
 
@@ -355,22 +520,157 @@ On Start: echo '{"agent": "tester-agent"}' > /tmp/active-agent.json
 
 ---
 
-## 9. Sources
+## 9. Multi-Agent Coordination Patterns Research
+
+*Added: 2025-12-27*
+
+### 9.1 Production Coordination Patterns
+
+From 40+ sources including academic papers (2024-2025), engineering blogs (Anthropic, Databricks, AWS, Azure), and production systems.
+
+| Pattern | Description | Production Example |
+|---------|-------------|-------------------|
+| **Supervisor/Coordinator** | Central orchestrator routes to specialist workers | Databricks, AWS, Azure, LangGraph |
+| **State Machine** | Explicit states with guarded transitions | Anthropic Long-Running Harness |
+| **Blackboard/Shared State** | Shared workspace for loose agent coupling | LLM Multi-Agent Systems (arXiv) |
+| **Sequential Handoff** | Defined agent sequences with quality gates | LangGraph, AutoGen |
+| **Event-Driven** | Message bus for distributed coordination | Confluent Event-Driven Systems |
+
+**Key Finding**: All production systems use **explicit orchestration** rather than autonomous agent coordination.
+
+### 9.2 State Machine Pattern (Anthropic)
+
+Architecture from [Effective Harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents):
+
+```
+[INITIALIZER] ──feature_list───▶ [CODING] ──tests_pass───▶ [TESTER] ──health_check───▶ [VERIFIER]
+       ▲                                                                              │
+       └───────────────────────────────────────────────failure────────────────────────┘
+```
+
+**Key Mechanisms**:
+- Feature list as contract (JSON, not Markdown)
+- Quality gates at each transition
+- Checkpoints for session resumption
+- Enforcement hooks (not just rules)
+
+### 9.3 Handoff Protocol
+
+From [LangGraph Multi-Agent Structures](https://langchain-opentutorial.gitbook.io/langchain-opentutorial/17-langgraph/02-structures/08-langgraph-multi-agent-structures-01):
+
+| Element | Description | Example |
+|---------|-------------|---------|
+| **Precondition** | What must be complete | Code written, linted |
+| **Artifacts** | What's passed along | File paths, test results |
+| **Postcondition** | What next agent expects | Ready-to-test state |
+| **Rollback** | How to handle failures | Return to previous state |
+
+### 9.4 Anti-Patterns to Avoid
+
+From research across [Maxim.ai](https://www.getmaxim.ai/articles/multi-agent-system-reliability-failure-patterns-root-causes-and-production-validation-strategies/), [Galileo](https://galileo.ai/blog/multi-agent-ai-failures-prevention), [Orq.ai](https://orq.ai/blog/why-do-multi-agent-llm-systems-fail):
+
+| Anti-Pattern | Symptom | Solution |
+|--------------|---------|----------|
+| **No-op loops** | Agents repeat work without progress | State machine with progress counters |
+| **Machine ghosting** | Agent appears to work but produces no output | Output validation before state transition |
+| **Quality drift** | Standards gradually degrade | Runtime guards (hooks that block) |
+| **State explosion** | Too many agents managing overlapping state | Clear state partitioning |
+| **Coordination deadlock** | Agents waiting on each other indefinitely | Timeouts, clear state machine |
+| **Cascading failures** | One agent's bad output breaks pipeline | Quality gates at each transition |
+| **Premature completion** | Feature marked done without testing | Block tested:true without evidence |
+| **Orchestration gaps** | Unclear who does what next | Auto-orchestration via state machine |
+
+### 9.5 Core Principles (Synthesized)
+
+| Principle | Explanation | Source |
+|-----------|-------------|--------|
+| **Explicit > Implicit** | State machines beat free-form coordination | Anthropic, Azure |
+| **Centralized > Decentralized** | Supervisor pattern beats autonomous chaos | Databricks, AWS |
+| **Enforcement > Rules** | Hooks that block beat instructions | Anthropic |
+| **Verification > Trust** | Quality gates prevent cascading failures | All production systems |
+| **Structured > Emergent** | Defined patterns beat agent self-organization | Academic + production |
+
+**Key Insight**: "Coordination complexity often outweighs multi-agent benefits. Production systems use structured, explicit orchestration rather than emergent agent behavior."
+
+### 9.6 Academic Research (2024-2025)
+
+| Paper | Focus | Key Finding |
+|-------|-------|-------------|
+| [Multi-Agent Collaboration Mechanisms: A Survey of LLMs](https://arxiv.org/abs/2501.06322) | Collaboration | Extensible framework for future research |
+| [Multi-Agent Coordination across Diverse Applications](https://arxiv.org/abs/2502.14743) | Coordination | 4 fundamental questions (what, when, how, who) |
+| [A Survey of Multi-AI Agent Collaboration](https://dl.acm.org/doi/full/10.1145/3745238.3745531) | Multi-AI | Advanced evolution from single AI |
+| [Exploring Advanced LLM Multi-Agent Systems Based on Blackboard Architecture](https://arxiv.org/html/2507.01701v1) | Blackboard | Shared state enables coordination without direct comms |
+
+### 9.7 Communication Patterns
+
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| **Message Passing (Direct)** | Agent A sends request, waits for reply | Synchronous queries |
+| **Shared State (Indirect)** | Feature list, blackboard | Progress tracking |
+| **Command Objects** | Explicit context passing | Handoffs |
+
+**Command Object Schema** (from [Multi-Agent Communication](https://www.linkedin.com/pulse/deep-dive-multi-agent-systems-communication-a2a-protocols-singh-ilnif)):
+```json
+{
+  "command": {
+    "agent": "tester-agent",
+    "task": "validate_feature",
+    "context": {
+      "feature_id": "PT-003",
+      "files_changed": ["src/feature.py"],
+      "previous_state": "coding"
+    },
+    "success_criteria": {
+      "tests_pass": true,
+      "coverage_min": 80
+    },
+    "next_agent": "verifier-agent"
+  }
+}
+```
+
+### 9.8 Full Research Details
+
+See: `/Users/gurusharan/Documents/remote-claude/agent-harness/coordination-patterns-research.md`
+
+Contains:
+- 5 production coordination patterns with examples
+- Communication patterns and mechanisms
+- Handoff best practices
+- State machine patterns (FSM, HSM)
+- 10 anti-patterns with solutions
+- Production case studies (Anthropic, Databricks, Azure, AWS)
+- Framework comparison (LangGraph, AutoGen, CrewAI, OpenAI Swarm)
+- 40+ sources cited
+
+---
+
+## 10. Sources
 
 | Article | Key Insight |
 |---------|-------------|
 | [Context Graphs](https://foundationcapital.com/context-graphs-ais-trillion-dollar-opportunity/) | Decision traces = trillion-dollar layer |
 | [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) | Progressive disclosure, code execution |
 | [Code Execution MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) | 98.7% token savings via sandbox |
-| [Long-Running Harness](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Feature list, session continuity |
-| [Context Engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | Smallest high-signal token set |
-| [Memory Survey](https://arxiv.org/abs/2512.13564) | Factual, experiential, working memory |
-| [ByteRover Cipher](https://github.com/campfirein/cipher) | System 1/2 memory for coding agents |
-| [Qdrant MCP](https://github.com/qdrant/mcp-server-qdrant) | Official semantic memory server |
+| [Long-Running Harness](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Feature list, session continuity, state machine |
+| [Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) | 4-agent sequence, enforcement hooks |
+| [Databricks Supervisor Architecture](https://www.databricks.com/blog/multi-agent-supervisor-architecture-orchestrating-enterprise-ai-scale) | Supervisor pattern at scale |
+| [Azure Agent Orchestration Patterns](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns) | Pattern catalog (sequential, concurrent, handoff, supervisor) |
+| [Confluent Event-Driven Multi-Agent](https://www.confluent.io/blog/event-driven-multi-agent-systems/) | Event bus coordination |
+| [Multi-Agent Collaboration Survey](https://arxiv.org/abs/2501.06322) | Academic survey (2025) |
+| [Blackboard Architecture for LLM MAS](https://arxiv.org/html/2507.01701v1) | Shared state coordination |
+| [Coordination Patterns Research](coordination-patterns-research.md) | 40+ sources synthesized |
 
 ---
 
 *Last Updated: 2025-12-28*
-*Status: Hook Research Complete - Ready for Implementation*
-*Resolved: Runtime guards (6.1), Verified completion (6.3), Subagent ID (6.4)*
-*Updated: Progressive disclosure pattern with detail levels (metadata/summary/full)*
+*Status: Research Complete - Ready for Implementation*
+
+**Sections Added This Session:**
+- 2.4: Context Engineering (smallest high-signal token set, compaction, sub-agent distillation)
+- 3.4: Learning Loop Patterns (Reflexion, OODA, Spotify verification loops)
+
+**Previously Added:**
+- Section 9: Multi-Agent coordination patterns, handoff protocols, anti-patterns
+- Progressive disclosure pattern (metadata/summary/full detail levels)
+- Hook research: blocking mechanisms, SubagentStop identification
