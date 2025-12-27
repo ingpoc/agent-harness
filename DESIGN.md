@@ -150,40 +150,210 @@ You are the orchestrator. You do NOT implement. You delegate.
 
 ## Layer 2: Enforcement
 
-### Enforcement Hooks (Not Rules)
+### Research Confirmed: Hooks CAN Block Actions
 
-| Hook | Trigger | Action | Replaces |
-|------|---------|--------|----------|
-| `block-tested-true.sh` | Write to feature-list.json with tested:true | Verify data non-empty, block if empty | 200 lines of "EMPTY = FAIL" rules |
-| `enforce-mcp-logs.sh` | Read() called on *.log file | Warn + suggest MCP tool | "Use MCP for logs" instruction |
-| `verify-implementation.sh` | coding-agent returns | Check files actually changed | "Implement before returning" rule |
-| `block-direct-edit.sh` | Opus edits src/ directly | Block, spawn coding-agent | "Don't implement directly" rule |
+**Verified mechanisms (Claude Code docs + testing):**
 
-### Hook Implementation Pattern
+| Mechanism | How | Effect |
+|-----------|-----|--------|
+| **Exit code 2** | `exit 2` + stderr message | Blocks action, feeds stderr to Claude |
+| **JSON decision** | `"permissionDecision": "deny"` | Structured blocking with reason |
+| **Parameter modification** | `updatedInput` field (v2.0.10+) | Modify tool params before execution |
+| **Stop blocking** | `"decision": "block"` on Stop hook | Forces agent to continue working |
 
-```bash
-#!/bin/bash
-# block-tested-true.sh
-# Runs BEFORE feature-list.json write is committed
+### Hook Timing Points
 
-FEATURE_FILE=".claude/progress/feature-list.json"
-TEMP_FILE="$1"  # Proposed new content
+| Event | Can Block? | Use Case |
+|-------|------------|----------|
+| **PreToolUse** | ✅ Yes | Block writes, validate state changes |
+| **PermissionRequest** | ✅ Yes | Custom approval logic |
+| **Stop/SubagentStop** | ✅ Yes | Force continuation until quality gates pass |
+| **PostToolUse** | ❌ No | Feedback only (tool already ran) |
 
-# Extract the feature being marked tested:true
-FEATURE_ID=$(jq -r '.features[] | select(.tested == true and .previously_tested != true) | .id' "$TEMP_FILE")
+**Limitation**: Cannot stop mid-execution. Hooks fire at decision points only.
 
-if [ -n "$FEATURE_ID" ]; then
-    # Verify data is non-empty
-    VERIFICATION=$(bash .claude/scripts/verify_feature_data.sh "$FEATURE_ID")
+### Enforcement Hooks
 
-    if [ "$VERIFICATION" == "EMPTY" ]; then
-        echo "BLOCKED: Cannot mark $FEATURE_ID as tested - data is empty"
-        echo "Run tester-agent with actual data verification"
-        exit 1  # Block the write
-    fi
-fi
+| Hook | Event | Trigger | Action | Replaces |
+|------|-------|---------|--------|----------|
+| `block-tested-true.py` | PreToolUse | Write to feature-list.json with tested:true | Verify evidence exists, deny if empty | 200 lines of rules |
+| `force-tester-completion.py` | SubagentStop | tester-agent tries to stop | Block until tests actually pass | "Don't stop early" rules |
+| `enforce-mcp-logs.py` | PreToolUse | Read() on *.log file >1000 lines | Deny + suggest MCP tool | "Use MCP" instruction |
+| `block-direct-edit.py` | PreToolUse | Opus edits src/ directly | Deny, suggest coding-agent | "Don't implement" rule |
 
-exit 0  # Allow the write
+### Hook Implementation: Exit Code 2 Pattern
+
+```python
+#!/usr/bin/env python3
+# .claude/hooks/block-tested-true.py
+# PreToolUse hook - blocks marking tested:true without evidence
+
+import json
+import sys
+import os
+
+input_data = json.load(sys.stdin)
+tool_name = input_data.get("tool_name", "")
+tool_input = input_data.get("tool_input", {})
+
+# Only check Write/Edit to feature files
+if tool_name not in ["Write", "Edit"]:
+    sys.exit(0)
+
+file_path = tool_input.get("file_path", "")
+content = tool_input.get("content", "") or tool_input.get("new_string", "")
+
+if "feature-list.json" not in file_path:
+    sys.exit(0)
+
+# Check if marking tested:true
+if '"tested": true' in content or '"tested":true' in content:
+    # Look for test evidence in session
+    evidence_dir = "/tmp/test-evidence"
+    has_evidence = os.path.exists(evidence_dir) and os.listdir(evidence_dir)
+
+    if not has_evidence:
+        print("BLOCKED: Cannot mark feature as tested without evidence.", file=sys.stderr)
+        print("Required: Test logs, screenshots, or API responses in /tmp/test-evidence/", file=sys.stderr)
+        sys.exit(2)  # Exit 2 = blocking error
+
+sys.exit(0)
+```
+
+### Hook Implementation: JSON Decision Pattern
+
+**Challenge**: SubagentStop input has NO agent identification fields (no agent_id, agent_name, agent_type).
+
+**Solution**: State file handshake - agents write identity on start, hooks read it.
+
+```python
+#!/usr/bin/env python3
+# .claude/hooks/force-tester-completion.py
+# SubagentStop hook - blocks tester from stopping without results
+
+import json
+import sys
+import os
+
+input_data = json.load(sys.stdin)
+
+# Agent identification via state file (SubagentStop has no agent_id field)
+agent_state_file = "/tmp/active-agent.json"
+if not os.path.exists(agent_state_file):
+    sys.exit(0)  # No agent state, allow stop
+
+with open(agent_state_file) as f:
+    agent_state = json.load(f)
+
+# Only enforce for tester-agent
+if agent_state.get("agent") != "tester-agent":
+    sys.exit(0)  # Not tester, allow stop
+
+# Check test evidence
+test_state_file = "/tmp/test-state.json"
+if os.path.exists(test_state_file):
+    with open(test_state_file) as f:
+        test_state = json.load(f)
+else:
+    test_state = {"tests_run": 0, "tests_passed": 0}
+
+# Block if no tests were actually run
+if test_state.get("tests_run", 0) == 0:
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "SubagentStop",
+            "decision": "block",
+            "reason": "No tests executed. Run at least one test before stopping."
+        }
+    }
+    print(json.dumps(output))
+    sys.exit(0)
+
+# Allow stop if tests ran
+sys.exit(0)
+```
+
+**Agent-side requirement** (in tester-agent prompt):
+```markdown
+## On Start
+Write agent identity: `echo '{"agent": "tester-agent", "started": "'$(date -Iseconds)'"}' > /tmp/active-agent.json`
+
+## On Test Execution
+Update test state: `echo '{"tests_run": N, "tests_passed": M}' > /tmp/test-state.json`
+```
+
+### Hook Implementation: Parameter Modification (v2.0.10+)
+
+```python
+#!/usr/bin/env python3
+# .claude/hooks/enforce-safe-paths.py
+# PreToolUse hook - modifies file paths to safe locations
+
+import json
+import sys
+
+input_data = json.load(sys.stdin)
+tool_name = input_data.get("tool_name", "")
+tool_input = input_data.get("tool_input", {})
+
+if tool_name == "Write":
+    file_path = tool_input.get("file_path", "")
+
+    # Force summaries to /tmp/summary/
+    if "summary" in file_path.lower() and not file_path.startswith("/tmp/"):
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "permissionDecisionReason": "Redirecting summary to /tmp/summary/",
+                "updatedInput": {
+                    "file_path": f"/tmp/summary/{os.path.basename(file_path)}"
+                }
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
+
+sys.exit(0)
+```
+
+### settings.json Hook Configuration
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": { "tool_name": "Write" },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/block-tested-true.py"
+          }
+        ]
+      },
+      {
+        "matcher": { "tool_name": "Read" },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/enforce-mcp-logs.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/force-tester-completion.py"
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ### Enforcement vs Rules Comparison
@@ -191,7 +361,8 @@ exit 0  # Allow the write
 | Approach | Can Be Ignored? | Token Cost | Effectiveness |
 |----------|-----------------|------------|---------------|
 | Rule in prompt | Yes | High (loaded every time) | Low |
-| Hook that blocks | No | Zero (external) | High |
+| Hook that blocks (exit 2) | **No** | Zero (external) | **High** |
+| Hook with JSON decision | **No** | Zero (external) | **High** |
 | Post-hoc check | N/A (too late) | Medium | Low |
 
 ---
@@ -356,15 +527,17 @@ Health check is already in coding-agent. No need for separate verifier.
 
 ## Implementation Priority
 
-| Priority | Component | Effort | Impact |
-|----------|-----------|--------|--------|
-| **P0** | State machine in main agent | Medium | Auto-orchestration |
-| **P0** | `block-tested-true.sh` hook | Low | Prevent premature completion |
-| **P1** | Simplify agent prompts | Low | Reduce token cost |
-| **P1** | `store_trace()` in MCP | Medium | Learning foundation |
-| **P2** | `query_traces()` in MCP | Medium | Pre-decision context |
-| **P2** | Pattern extraction | Medium | Rule evolution |
-| **P3** | Auto-guard creation | High | Self-improving system |
+| Priority | Component | Effort | Impact | Status |
+|----------|-----------|--------|--------|--------|
+| **P0** | ~~Research hooks~~ | ~~Low~~ | ~~Foundation~~ | ✅ Done |
+| **P0** | `block-tested-true.py` hook | Low | Prevent premature completion | Ready |
+| **P0** | `force-tester-completion.py` hook | Low | Ensure tests run | Ready |
+| **P0** | State machine in main agent | Medium | Auto-orchestration | Next |
+| **P1** | Simplify agent prompts | Low | Reduce token cost | |
+| **P1** | `store_trace()` in MCP | Medium | Learning foundation | |
+| **P2** | `query_traces()` in MCP | Medium | Pre-decision context | |
+| **P2** | Pattern extraction | Medium | Rule evolution | |
+| **P3** | Auto-guard creation | High | Self-improving system | |
 
 ---
 
@@ -380,15 +553,27 @@ Health check is already in coding-agent. No need for separate verifier.
 
 ---
 
-## Open Research Questions
+## Research Questions
 
-| Question | Why It Matters |
-|----------|----------------|
-| Can hooks block writes mid-action? | Core enforcement mechanism |
-| How to detect "user correction" automatically? | Auto-capture for learning |
-| Should patterns auto-create hooks? | Self-evolving system |
-| How to handle hook bypass for edge cases? | Flexibility vs safety |
-| Cross-project learning scope? | Pattern portability |
+### ✅ Resolved
+
+| Question | Answer |
+|----------|--------|
+| Can hooks block actions? | **Yes** - Exit code 2 or JSON `"decision": "deny"` |
+| What events support blocking? | PreToolUse, PermissionRequest, Stop, SubagentStop |
+| Can hooks modify parameters? | **Yes** - `updatedInput` field (v2.0.10+) |
+| Mid-execution blocking? | **No** - Only at decision points (pre/post) |
+| How to identify agent in SubagentStop? | **State file handshake** - No agent_id in input, agents write `/tmp/active-agent.json` |
+| SubagentStop input fields? | session_id, transcript_path, permission_mode, hook_event_name, stop_hook_active |
+
+### 🔍 Open
+
+| Question | Why It Matters | Next Step |
+|----------|----------------|-----------|
+| How to detect user corrections? | Auto-capture for learning | Analyze PostToolUse + user response patterns |
+| Should patterns auto-create hooks? | Self-evolving system | Start manual, evaluate auto-gen later |
+| Hook bypass for edge cases? | Flexibility vs safety | Design `--force` flag or admin override |
+| Cross-project pattern scope? | Portability | Separate project-specific vs universal traces |
 
 ---
 
@@ -402,5 +587,11 @@ Health check is already in coding-agent. No need for separate verifier.
 
 ---
 
-*Updated: 2025-12-27*
-*Status: Evolved Design - Ready for Research/Implementation*
+*Updated: 2025-12-28*
+*Status: Enforcement mechanisms confirmed - Ready for implementation*
+
+*Changelog:*
+
+- *Added hook blocking mechanisms (exit 2, JSON decision, updatedInput)*
+- *Added SubagentStop research: no agent_id field, use state file handshake*
+- *Updated force-tester-completion.py with agent identification workaround*

@@ -208,18 +208,21 @@ Enforcement triggers → Trace captured → Pattern extracted → New guard crea
 
 ---
 
-## 6. Open Research Questions
+## 6. Research Questions
 
-### 6.1 Runtime Guards
+### 6.1 Runtime Guards ✅ RESOLVED
 
 **Question**: Can hooks BLOCK actions, not just log?
 
-| Current | Needed |
-|---------|--------|
-| Hook logs violation | Hook prevents write |
-| Post-hoc detection | Pre-action verification |
+**Answer**: YES - Two mechanisms:
 
-**Approach**: Pre-tool hooks that validate state before allowing action.
+| Mechanism | How | Effect |
+|-----------|-----|--------|
+| Exit code 2 | `exit 2` + stderr | Blocks action, stderr fed to Claude |
+| JSON decision | `"permissionDecision": "deny"` | Structured blocking with reason |
+| Parameter mod | `updatedInput` (v2.0.10+) | Modify tool params before execution |
+
+**Blocking events**: PreToolUse ✅, PermissionRequest ✅, Stop ✅, SubagentStop ✅, PostToolUse ❌
 
 ### 6.2 Auto-Orchestration
 
@@ -233,19 +236,47 @@ Enforcement triggers → Trace captured → Pattern extracted → New guard crea
 
 **Approach**: State machine in orchestrator prompt + feature-list status.
 
-### 6.3 Verified Completion
+### 6.3 Verified Completion ✅ RESOLVED
 
 **Question**: Can tested:true be gated?
 
-| Option | Mechanism |
-|--------|-----------|
-| Hook blocks write | Pre-tool validation |
-| Separate "verifier" tool | Only this tool can set tested:true |
-| Main agent only | Subagents cannot modify tested field |
+**Answer**: YES - PreToolUse hook blocks Write/Edit with tested:true without evidence.
 
-**Approach**: tested:true only writable by main agent after tester returns PASSED.
+| Implementation | Mechanism |
+|----------------|-----------|
+| `block-tested-true.py` | PreToolUse hook checks for evidence in /tmp/test-evidence/ |
+| Exit code 2 | Blocks write, feeds error to Claude |
+| Evidence required | Test logs, screenshots, or API responses |
 
-### 6.4 Dynamic Skill Loading
+**Implementation pattern**:
+```python
+if '"tested": true' in content and not evidence_exists():
+    print("BLOCKED: Cannot mark feature as tested without evidence", file=sys.stderr)
+    sys.exit(2)
+```
+
+### 6.4 Subagent Identification ✅ RESOLVED
+
+**Question**: Can hooks identify which agent is stopping?
+
+**Answer**: NO direct field in SubagentStop input. Must use state file handshake.
+
+| SubagentStop Input Fields | Missing |
+|---------------------------|---------|
+| session_id, transcript_path, permission_mode, stop_hook_active | agent_id, agent_name, agent_type |
+
+**Workaround: State file handshake**
+```python
+# Agent writes on start: /tmp/active-agent.json = {"agent": "tester-agent", ...}
+# Hook reads: Only enforce if agent == "tester-agent"
+```
+
+**Agent prompt requirement**:
+```markdown
+On Start: echo '{"agent": "tester-agent"}' > /tmp/active-agent.json
+```
+
+### 6.5 Dynamic Skill Loading
 
 **Question**: Can skills self-activate by context?
 
@@ -256,7 +287,7 @@ Enforcement triggers → Trace captured → Pattern extracted → New guard crea
 
 **Approach**: Skill metadata triggers like agent descriptions.
 
-### 6.5 Learning → Enforcement
+### 6.6 Learning → Enforcement
 
 **Question**: Can traces create new guards?
 
@@ -267,7 +298,7 @@ Enforcement triggers → Trace captured → Pattern extracted → New guard crea
 
 **Approach**: Pattern extraction → hook generation → auto-deployment.
 
-### 6.6 Agent Introspection
+### 6.7 Agent Introspection
 
 **Question**: Can agent ask "am I using right tool?"
 
@@ -319,5 +350,6 @@ Enforcement triggers → Trace captured → Pattern extracted → New guard crea
 
 ---
 
-*Last Updated: 2025-12-27*
-*Status: Research Complete - Ready for Design Refinement*
+*Last Updated: 2025-12-28*
+*Status: Hook Research Complete - Ready for Implementation*
+*Resolved: Runtime guards (6.1), Verified completion (6.3), Subagent ID (6.4)*
