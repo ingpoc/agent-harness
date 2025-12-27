@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    
+    "token-efficient": {
+      "command": "srt",
+      "args": [
+        "node",
+        "/Users/gurusharan/Documents/remote-claude/token-efficient-mcp/dist/index.js"
+      ]
+    }
+  }
+ }

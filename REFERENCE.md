@@ -113,6 +113,71 @@
 
 ---
 
+## Skills Directory (.skills/)
+
+**Purpose**: Modular skills with progressive disclosure - load only relevant context
+
+**Token savings**: ~95% (load ~200 tokens metadata vs 10K+ full documents)
+
+### .skills/context-graph/
+
+Context engineering patterns for multi-agent systems.
+
+| File | When to Read | Content |
+|------|--------------|---------|
+| SKILL.md | Always (metadata) | Overview, when-to-use, file index |
+| patterns.md | Core patterns needed | Progressive disclosure, compaction, handoffs |
+| storage.md | Designing storage backend | sqlite-vec vs Postgres vs vector DBs |
+| learning-loops.md | Implementing learning | Reflexion, OODA, Spotify verification |
+| research-sources.md | Academic backing needed | Citations, papers, articles |
+
+### .skills/coordination/
+
+Multi-agent coordination patterns from production systems.
+
+| File | When to Read | Content |
+|------|--------------|---------|
+| SKILL.md | Always (metadata) | Overview, patterns catalog |
+| supervisor-pattern.md | Designing centralized coordination | Databricks-style supervisor |
+| handoffs.md | Implementing agent-to-agent control | Command objects, state transitions |
+| anti-patterns.md | Avoiding common failures | 10 anti-patterns with solutions |
+| production-systems.md | Learning from real deployments | Anthropic, Databricks, AWS, Azure |
+
+### .skills/enforcement/
+
+Hook patterns for runtime action validation.
+
+| File | When to Read | Content |
+|------|--------------|---------|
+| SKILL.md | Always (metadata) | Overview, blocking mechanisms |
+| blocking-hooks.md | Implementing hooks | PreToolUse, SubagentStop, exit code 2 |
+| quality-gates.md | Designing verification loops | Spotify pattern, tested:true gates |
+| hook-templates.md | Writing hook code | Python hook examples |
+
+### .skills/token-efficient/
+
+Token-efficient MCP tools for data processing and code execution.
+
+| File | When to Read | Content |
+|------|--------------|---------|
+| SKILL.md | Always (metadata) | Overview, token savings, tool catalog |
+| patterns.md | Deciding which tool to use | Decision tree, when to use each tool |
+| examples.md | Need code examples | Concrete usage patterns with code |
+
+**Tools available**:
+- `execute_code` - Python/Bash/Node in sandbox (98%+ savings)
+- `process_csv` - Filter/aggregate CSV files (99% savings)
+- `process_logs` - Pattern match logs (95% savings)
+- `search_tools` - Find tools by keyword (95% savings)
+- `batch_process_csv` - Multiple CSV files (80% savings)
+
+**How skills work**:
+1. Agent loads SKILL.md metadata (name + description)
+2. When relevant, agent reads specific .md file for details
+3. Research-sources loaded only when academic backing needed
+
+---
+
 ## Reading Order
 
 ### For Newcomers
@@ -120,20 +185,22 @@
 1. THIS FILE (REFERENCE.md)    ← Understand the doc structure
 2. SUMMARY.md                   ← What problem, what solution
 3. DESIGN.md                    ← How it will work
-4. context-graph.md             ← Research backing (optional/deep)
+4. .skills/{name}/SKILL.md      ← Patterns on demand (as needed)
 ```
 
 ### For Implementation
 ```
-1. DESIGN.md - Layer 2 (Enforcement)    ← Hook implementations
-2. DESIGN.md - Implementation Priority   ← What to build first
-3. DESIGN.md - Simplified Agent Specs   ← New agent prompts
+1. .skills/enforcement/SKILL.md          ← Hook patterns overview
+2. .skills/enforcement/hook-templates.md ← Ready-to-use hooks
+3. .skills/coordination/handoffs.md      ← Handoff protocols
+4. DESIGN.md - Implementation Priority   ← What to build first
 ```
 
 ### For Research
 ```
-1. context-graph.md - Section 6 (Research Questions)  ← What we learned
-2. DESIGN.md - Research Questions                    ← Open items
+1. .skills/context-graph/research-sources.md ← Academic backing
+2. .skills/coordination/production-systems.md ← Real-world patterns
+3. DESIGN.md - Research Questions             ← Open items
 ```
 
 ---
@@ -144,10 +211,13 @@
 |--------------|-----------|
 | Understand the project | SUMMARY.md |
 | See the architecture | DESIGN.md (Layer 1-3) |
-| Implement a hook | DESIGN.md (Layer 2: Enforcement) |
-| Understand research decisions | context-graph.md |
+| Implement a hook | .skills/enforcement/hook-templates.md |
+| Learn coordination patterns | .skills/coordination/SKILL.md |
+| Design learning system | .skills/context-graph/learning-loops.md |
+| Process data efficiently | .skills/token-efficient/SKILL.md |
+| Avoid common pitfalls | .skills/coordination/anti-patterns.md |
+| Understand research backing | .skills/context-graph/research-sources.md |
 | Know what to build first | DESIGN.md (Implementation Priority) |
-| Check what's resolved | DESIGN.md or context-graph.md (Section 6) |
 
 ---
 
