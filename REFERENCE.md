@@ -153,6 +153,7 @@ Hook patterns for runtime action validation.
 | blocking-hooks.md | Implementing hooks | PreToolUse, SubagentStop, exit code 2 |
 | quality-gates.md | Designing verification loops | Spotify pattern, tested:true gates |
 | hook-templates.md | Writing hook code | Python hook examples |
+| sandbox-runtime.md | MCP server isolation | OS-level sandboxing with srt |
 
 ### .skills/token-efficient/
 

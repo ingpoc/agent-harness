@@ -30,8 +30,9 @@ State machine management for single-orchestrator architecture.
 | File | Load When |
 |------|-----------|
 | references/state-machine.md | Designing state transitions |
-| references/compression.md | Context exceeds 80% |
+| references/compression.md | Context exceeds 50% (progressive checkpoints) |
 | references/session-management.md | Session start/recovery |
+| references/session-resumption.md | Resuming with fresh context + summary |
 
 ## Scripts
 

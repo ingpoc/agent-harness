@@ -43,3 +43,6 @@ Runtime mechanisms that block invalid actions.
 | references/blocking-hooks.md | Implementing hook mechanisms |
 | references/quality-gates.md | Designing verification loops |
 | references/hook-templates.md | Writing hook code |
+| references/agent-harness-hooks.md | Agent-harness specific patterns |
+| references/sandbox-runtime.md | OS-level MCP server isolation |
+| references/sandbox-fast-path.md | Hybrid security (allowlist + sandbox for 2-3x speed) |

@@ -31,6 +31,7 @@ jq '.features[0] | has("id", "description", "priority", "status")' .claude/progr
 |------|-----------|
 | references/feature-breakdown.md | Breaking down requirements |
 | references/project-detection.md | Detecting project type |
+| references/mvp-feature-breakdown.md | MVP-first tiered feature generation (10/30/200) |
 
 ## Assets
 

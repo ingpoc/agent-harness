@@ -33,3 +33,4 @@ jq '.features[] | select(.id=="'$FEATURE_ID'") | .status == "implemented"' .clau
 | references/coding-patterns.md | Writing implementation code |
 | references/mcp-usage.md | Using MCP tools efficiently |
 | references/health-checks.md | Verifying implementation |
+| references/async-parallel-operations.md | Running independent operations in parallel |
