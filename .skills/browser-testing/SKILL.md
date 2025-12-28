@@ -1,93 +1,59 @@
 ---
 name: browser-testing
-description: Use when testing web applications, debugging browser console, automating form interactions, or verifying UI changes. Requires: Chrome extension 1.0.36+, Claude Code 2.0.73+, paid plan. Includes: live debugging, console log reading, GIF recording, authenticated app testing.
+description: "Use when testing web applications, debugging browser console errors, automating form interactions, or verifying UI implementations. Load for localhost testing, authenticated app testing (Gmail, Notion), or recording demo GIFs. Requires Chrome extension 1.0.36+, Claude Code 2.0.73+, paid plan."
+keywords: browser, chrome, testing, console, debug, forms, ui, gif, localhost
 ---
 
-# Browser Testing Skill
+# Browser Testing
 
-Test and debug web applications directly from the terminal using Claude Code's Chrome integration.
-
-## When to Use This Skill
-
-Load this skill when you need to:
-- Test local web applications (localhost:3000)
-- Debug with browser console logs
-- Verify UI implementations against designs
-- Automate form filling and submission
-- Test authenticated web apps (Gmail, Notion, Google Docs)
-- Record demo GIFs of user flows
-- Extract structured data from web pages
-- Run multi-site workflows
+Test and debug web applications via Chrome integration.
 
 ## Prerequisites
 
-| Requirement | Minimum Version |
-|-------------|-----------------|
+| Requirement | Minimum |
+|-------------|---------|
 | Chrome extension | 1.0.36+ |
 | Claude Code CLI | 2.0.73+ |
-| Plan | Pro, Team, or Enterprise |
-| Browser | Google Chrome |
+| Plan | Pro/Team/Enterprise |
 
-## Additional Files
+## Instructions
 
-| File | When to Read | Content |
-|------|--------------|---------|
-| patterns.md | Designing test scenarios | Test patterns, debugging strategies |
-| examples.md | Need concrete examples | Real-world test cases with prompts |
+1. Enable Chrome: `claude --chrome` or `/chrome`
+2. Get tab context: `tabs_context_mcp`
+3. Navigate: `navigate` to URL
+4. Interact: `find`, `form_input`, `computer`
+5. Verify: `read_console_messages`, `read_page`
+6. Evidence: `computer(action="screenshot")`
 
-## Key Capabilities
+## Quick Commands
 
-| Capability | Description | Use Case |
-|------------|-------------|----------|
-| **Live debugging** | Read console errors, fix code | Console error → code fix |
-| **Local testing** | Test localhost URLs | Development cycle |
-| **Console reading** | Filter logs by pattern | Find ERROR/WARN messages |
-| **Form automation** | Fill and submit forms | Data entry, testing |
-| **Authenticated apps** | Uses browser login state | No API connectors needed |
-| **GIF recording** | Record interactions | Demos, documentation |
-| **Data extraction** | Pull structured info | Scrape, compile data |
-
-## Quick Reference
-
-| Task | Example Prompt |
-|------|---------------|
-| Test local app | "Open localhost:3000, submit form with invalid data" |
-| Debug console | "Check console for errors on page load" |
-| Verify UI | "Confirm the login form matches the Figma mock" |
-| Fill forms | "Fill the contact form with data from contacts.csv" |
-| Record demo | "Record GIF of checkout flow from cart to confirm" |
-
-## Available Tools (via MCP)
-
-Running `/mcp` and clicking `claude-in-chrome` shows:
-- `computer` - Mouse/keyboard actions (click, type, scroll, screenshot)
-- `navigate` - URL navigation
-- `read_page` - Accessibility tree/DOM state
-- `find` - Find elements by natural language
-- `form_input` - Fill forms
-- `read_console_messages` - Debug with pattern filtering
-- `read_network_requests` - Monitor API calls
-- `gif_creator` - Record sessions
-- `tabs_context_mcp` - Get tab context
-
-## Best Practices
-
-1. **Avoid modal dialogs** - JavaScript alerts block browser events
-2. **Use fresh tabs** - Claude creates new tabs each session
-3. **Filter console output** - Specify patterns (ERROR, WARN) rather than "all logs"
-4. **Test on localhost** - Perfect for development testing
-5. **Handle blockers manually** - Login pages, CAPTCHAs - then tell Claude to continue
-
-## Setup
-
-First time setup:
 ```bash
-claude --chrome
-# Or in-session: /chrome
-# Select "Enable by default" to skip --chrome flag
+# Check for console errors
+scripts/check-console-errors.sh TAB_ID
+
+# Verify page loaded
+scripts/verify-page-load.sh TAB_ID URL
+
+# Run smoke test
+scripts/smoke-test.sh URL
 ```
 
-## Sources
+## MCP Tools
 
-- [Claude Code Chrome Documentation](https://code.claude.com/docs/en/chrome)
-- [Claude in Chrome Extension](https://chrome.google.com/webstore/detail/claude-in-chrome/)
+| Tool | Purpose |
+|------|---------|
+| `tabs_context_mcp` | Get tab IDs (call first) |
+| `navigate` | Go to URL |
+| `computer` | Click, type, screenshot |
+| `find` | Find element by description |
+| `form_input` | Fill form fields |
+| `read_console_messages` | Debug with pattern filter |
+| `read_page` | Get DOM/accessibility tree |
+| `gif_creator` | Record interactions |
+
+## References
+
+| File | Load When |
+|------|-----------|
+| references/patterns.md | Designing test scenarios |
+| references/examples.md | Need concrete examples |

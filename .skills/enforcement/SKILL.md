@@ -1,93 +1,45 @@
 ---
 name: enforcement
-description: Hook patterns for runtime action validation. Use when implementing quality gates, blocking invalid actions, or enforcing agent behavior. Includes: exit code 2 blocking, JSON permission denial, Spotify verification loops.
+description: "Use when implementing hooks that BLOCK invalid actions, creating quality gates for state transitions, or enforcing tested:true verification. Load when designing enforcement mechanisms. Uses exit code 2 to block, JSON permissionDecision:deny, or updatedInput modification. Rules are instructions; hooks are enforcement."
+keywords: hooks, blocking, quality-gates, verification, exit-code-2, deny
 ---
 
-# Enforcement Skill
+# Enforcement
 
-Runtime mechanisms that block invalid actions rather than just warning about them.
+Runtime mechanisms that block invalid actions.
 
-## When to Use This Skill
+## Core Principle
 
-Load this skill when you need to:
-- Implement hooks that BLOCK invalid actions
-- Create quality gates for state transitions
-- Enforce tested:true verification
-- Prevent agents from ignoring rules
-- Design verification loops (Spotify pattern)
+> "Rules are instructions, not enforcements. Systems need verification gates, not more documentation."
 
-## Key Insight
+## Instructions
 
-> **Rules are instructions, not enforcements. Systems need verification gates, not more documentation.**
-
-Hooks CAN block actions through:
-- Exit code 2 + stderr
-- JSON `"permissionDecision": "deny"`
-- `updatedInput` parameter modification
-
-## Additional Files
-
-| File | When to Read | Content |
-|------|--------------|---------|
-| `blocking-hooks.md` | Implementing hook mechanisms | PreToolUse, SubagentStop, exit code 2, JSON deny |
-| `quality-gates.md` | Designing verification loops | Spotify pattern, tested:true gates |
-| `hook-templates.md` | Writing hook code | Python hook examples for common patterns |
-
-## Hook Timing Points
-
-| Event | Can Block? | Use Case |
-|-------|------------|----------|
-| **PreToolUse** | ✅ Yes | Block writes, validate state changes |
-| **PermissionRequest** | ✅ Yes | Custom approval logic |
-| **Stop/SubagentStop** | ✅ Yes | Force continuation until quality gates pass |
-| **PostToolUse** | ❌ No | Feedback only (tool already ran) |
+1. Identify what needs enforcement (not just documentation)
+2. Choose hook timing: PreToolUse, PermissionRequest, SubagentStop
+3. Implement blocking logic: `scripts/block-*.sh`
+4. Test with invalid action → verify block
 
 ## Blocking Mechanisms
 
 | Mechanism | How | Effect |
 |-----------|-----|--------|
-| **Exit code 2** | `exit 2` + stderr message | Blocks action, feeds stderr to Claude |
-| **JSON decision** | `"permissionDecision": "deny"` | Structured blocking with reason |
-| **Parameter modification** | `updatedInput` field (v2.0.10+) | Modify tool params before execution |
-| **Stop blocking** | `"decision": "block"` on Stop hook | Forces agent to continue working |
+| Exit code 2 | `exit 2` + stderr | Blocks, feeds stderr to Claude |
+| JSON deny | `"permissionDecision": "deny"` | Structured blocking |
+| Stop block | `"decision": "block"` | Forces agent to continue |
 
-## Quick Example: Block tested:true Without Evidence
+## Hook Timing
 
-```python
-#!/usr/bin/env python3
-# .claude/hooks/block-tested-true.py
+| Event | Can Block? | Use Case |
+|-------|------------|----------|
+| PreToolUse | Yes | Validate before execution |
+| PermissionRequest | Yes | Custom approval logic |
+| SubagentStop | Yes | Force quality gates |
+| PostToolUse | No | Feedback only |
 
-import json
-import sys
-import os
+## References
 
-input_data = json.load(sys.stdin)
-tool_input = input_data.get("tool_input", {})
-content = tool_input.get("content", "")
-
-# Check if marking tested:true
-if '"tested": true' in content:
-    evidence_dir = "/tmp/test-evidence"
-    has_evidence = os.path.exists(evidence_dir) and os.listdir(evidence_dir)
-
-    if not has_evidence:
-        print("BLOCKED: Cannot mark tested without evidence", file=sys.stderr)
-        sys.exit(2)  # Exit 2 = blocking error
-
-sys.exit(0)
-```
-
-## Common Enforcement Hooks
-
-| Hook | Event | Trigger | Action |
-|------|-------|---------|--------|
-| `block-tested-true.py` | PreToolUse | Write with tested:true | Verify evidence exists |
-| `force-tester-completion.py` | SubagentStop | tester tries to stop | Block until tests pass |
-| `enforce-mcp-logs.py` | PreToolUse | Read() on large log file | Deny, suggest MCP |
-| `block-direct-edit.py` | PreToolUse | Opus edits src/ directly | Deny, suggest coding-agent |
-
-## Sources
-
-- Claude Code hooks documentation
-- Anthropic: Multi-Agent Research System (enforcement hooks)
-- Spotify Engineering: Verification loops with veto power
+| File | Load When |
+|------|-----------|
+| references/blocking-hooks.md | Implementing hook mechanisms |
+| references/quality-gates.md | Designing verification loops |
+| references/hook-templates.md | Writing hook code |

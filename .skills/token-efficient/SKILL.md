@@ -1,73 +1,55 @@
 ---
 name: token-efficient
-description: Use when processing >50 items, analyzing CSV/log files, executing code, or searching for tools. Includes: progressive disclosure (98.7% savings), in-sandbox processing (99% savings), pagination, heredoc support.
+description: "Use when processing >50 items, analyzing CSV/log files, executing code in sandbox, or searching for tools. Load for data processing tasks. Achieves 98%+ token savings via in-sandbox execution, progressive disclosure, and pagination. Supports heredocs for multi-line bash."
+keywords: csv, logs, execute, sandbox, pagination, batch, filter, aggregate
 ---
 
-# Token-Efficient MCP Skill
+# Token-Efficient MCP
 
-Token-efficient tools for processing data, executing code, and finding tools - all designed to minimize token usage through on-demand loading and in-sandbox processing.
+Process data in sandbox, return only results. 98%+ token savings.
 
-## When to Use This Skill
+## Instructions
 
-Load this skill when you need to:
-- Process CSV files with filtering/aggregation
-- Analyze log files with pattern matching
-- Execute code (Python/Bash/Node) in sandbox
-- Search for available tools by keyword
-- Process multiple files efficiently
-- Use heredoc syntax for multi-line bash scripts
+1. Search for tool: `search_tools("csv")` (95% savings vs loading all)
+2. Process data in sandbox (never load raw to context)
+3. Use pagination for large files: `offset`, `limit`
+4. Return summaries, not raw data
 
-## Server Info
+## Quick Commands
 
-**Version**: 1.2.0
-**Heredoc Support**: Enabled (`<<EOF`, `<<'EOF'`, `<<EOT`)
+```bash
+# Process CSV with filter
+scripts/process-csv.sh data.csv "price > 100"
 
-## Additional Files
+# Search logs for errors
+scripts/search-logs.sh app.log "ERROR|WARN"
 
-| File | When to Read | Content |
-|------|--------------|---------|
-| patterns.md | Deciding which tool to use | Decision tree for tool selection |
-| examples.md | Need code examples | Concrete usage patterns |
+# Execute code in sandbox
+scripts/run-sandbox.sh script.py
+```
 
 ## Token Savings
 
-| Tool | Typical Savings |
-|------|-----------------|
-| `execute_code` | 98%+ (code executed in sandbox) |
-| `process_csv` | 99% (10K rows → 100 results) |
-| `process_logs` | 95% (100K lines → 500 matches) |
-| `search_tools` | 95% (vs loading all definitions) |
-| `batch_process_csv` | 80% (multiple files) |
+| Tool | Savings | Example |
+|------|---------|---------|
+| `execute_code` | 98%+ | Run Python without loading |
+| `process_csv` | 99% | 10K rows → 100 results |
+| `process_logs` | 95% | 100K lines → 500 matches |
+| `search_tools` | 95% | Find tools on-demand |
 
-## Quick Reference
+## MCP Tools
 
-| Task | Tool | Key Feature |
-|------|------|-------------|
-| Filter CSV | `process_csv` | filter_expr, aggregation |
-| Search logs | `process_logs` | pattern matching with offset |
-| Run code | `execute_code` | Python/Bash/Node with heredocs |
-| Find tools | `search_tools` | Progressive disclosure |
-| Multiple CSVs | `batch_process_csv` | One call, consistent filter |
+| Tool | Purpose |
+|------|---------|
+| `execute_code` | Python/Bash/Node in sandbox |
+| `process_csv` | Filter, aggregate CSV |
+| `process_logs` | Pattern match logs |
+| `search_tools` | Find tools by keyword |
+| `batch_process_csv` | Multiple CSVs at once |
 
-## Core Principles
+## References
 
-1. **Progressive Disclosure** - Load tool definitions on-demand
-2. **Data Filtering** - Process in sandbox, return only results
-3. **Summarization** - Return summaries, not raw data
-4. **Heredoc Support** - Multi-line bash scripts via `<<EOF`
-5. **Caching** - Repeated calls get 90% savings
-6. **Pagination** - Use offset for large files
-7. **Batch Processing** - Multiple files in one call
-
-## Response Formats
-
-| Format | Use For |
-|--------|---------|
-| `summary` | Human consumption (default) |
-| `json` | Programmatic processing |
-| `markdown` | Formatted output |
-
-## Sources
-
-- Anthropic: Code Execution with MCP (progressive disclosure pattern)
-- Token-efficient MCP server v1.2.0
+| File | Load When |
+|------|-----------|
+| references/patterns.md | Choosing which tool |
+| references/examples.md | Need code examples |
