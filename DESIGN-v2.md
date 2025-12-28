@@ -129,12 +129,22 @@ def verify_tests():
 │           MAIN AGENT (Opus, single context window)                          │
 │                                                                              │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ SESSION ENTRY PROTOCOL (run first)                                     │  │
+│  │  Phase 1: Safety (pwd, git log, health check)                         │  │
+│  │  Phase 2: State (init state.json, check features)                     │  │
+│  │  Phase 3: Context (load summary, recent files, skill)                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                              ↓                                               │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │ STATE MACHINE                                                          │  │
 │  │                                                                        │  │
-│  │  [START] → [INIT] → [IMPLEMENT] → [TEST] → [COMPLETE]                 │  │
-│  │              ↓           ↓           ↓                                 │  │
-│  │           init/       impl/       test/      ← Skills (on-demand)     │  │
-│  │           skill       skill       skill                                │  │
+│  │  [START] ──┬──→ [INIT] → [IMPLEMENT] → [TEST] → [COMPLETE]            │  │
+│  │            │        ↓          ↓          ↓                            │  │
+│  │            │     init/      impl/      test/   ← Skills (on-demand)   │  │
+│  │            │                                                           │  │
+│  │            └──→ [FIX_BROKEN] ← Health check failed                    │  │
+│  │                      ↓                                                 │  │
+│  │                 enforcement/  ← Must fix before features              │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
 │  Context: Full session history, compressed as needed                        │
@@ -143,17 +153,41 @@ def verify_tests():
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Session Entry Protocol
+
+**Source**: Merged from Skills + [Anthropic Effective Harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+
+Run `scripts/session-entry.sh` at start of every session:
+
+| Phase | Steps | Purpose |
+|-------|-------|---------|
+| **1. Safety** | pwd, git log -5, health check | Verify environment, detect broken state |
+| **2. State** | Init state.json, check features | Determine current/next state |
+| **3. Context** | Load summary, recent files | Restore continuity from previous session |
+
+```bash
+# Run entry protocol
+./scripts/session-entry.sh
+
+# Output: JSON with health_status, feature_status, next_state
+```
+
+**Key insight from Anthropic**: *"Verify app hasn't been left in broken state"* - If health check fails, enter FIX_BROKEN state before any feature work.
+
 ### State Machine (Enforced)
 
 | State | Entry Condition | Exit Condition | Skill Loaded |
 |-------|-----------------|----------------|--------------|
-| **START** | Session begins | feature-list.json checked | - |
+| **START** | Session begins | Entry protocol complete | - |
+| **FIX_BROKEN** | Health check fails | Health check passes | `enforcement/` |
 | **INIT** | No feature-list.json | Feature list created | `initialization/` |
 | **IMPLEMENT** | Pending feature exists | Implementation complete | `implementation/` |
 | **TEST** | Implementation complete | Tests pass (verified by code) | `testing/` |
 | **COMPLETE** | All features tested | - | - |
 
 **Invalid transitions blocked by hooks**:
+- START → IMPLEMENT (skip init when no features)
+- FIX_BROKEN → IMPLEMENT (skip fixing broken app)
 - INIT → COMPLETE (skip implementation)
 - IMPLEMENT → COMPLETE (skip testing)
 - TEST → COMPLETE (without passing tests)
@@ -263,6 +297,23 @@ Resume sessions efficiently by combining fresh context with checkpoint summaries
 | `verify-files-exist.py` | PreToolUse (mark completed) | Check implementation files exist | Missing files |
 | `verify-no-skip.py` | PreToolUse (state transition) | Check valid transition | Invalid transition |
 | `verify-health.py` | PreToolUse (mark tested) | curl health endpoint | Server not running |
+| `require-commit-before-tested.py` | PreToolUse (Write feature-list) | `git status --porcelain` | Uncommitted changes |
+
+### Git Integration
+
+From Anthropic Effective Harnesses: *"Git commit history with descriptive messages"*
+
+| Script | Purpose | When |
+|--------|---------|------|
+| `feature-commit.sh <id>` | Commit with `[feat-id] message` format | After implementation, before marking tested |
+| `session-commit.sh` | Checkpoint commit with state info | At session end |
+
+**Flow:**
+```
+Implement → Test → feature-commit.sh → Mark tested
+                        ↑
+              Hook blocks if skipped
+```
 
 ### Exit Code 2 Pattern (Blocking)
 
@@ -652,14 +703,16 @@ def create_skill_update(traces):
 | [Kubiya: Deterministic AI](https://www.kubiya.ai/blog/deterministic-ai-architecture) | Code paths for reproducibility |
 | [StateFlow](https://arxiv.org/html/2403.11322v1) | State machine for LLM workflows |
 | [Anthropic: autonomous-coding quickstart](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding) | Two-agent pattern, feature_list.json, MVP-first approach, session resumption, progressive compression |
+| [Anthropic: Effective Harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | Session entry protocol, health checks, broken state handling |
 
 ---
 
-*Version: 2.0*
+*Version: 2.1*
 *Updated: 2025-12-28*
 *Status: Expert-backed design, ready for implementation*
 
 *Changelog from v1:*
+
 - Collapsed 4 agents → 1 orchestrator + skills
 - Added Layer 0: Determinism
 - Replaced LLM judgment with code verification
@@ -668,8 +721,24 @@ def create_skill_update(traces):
 - Updated research sources with expert consensus
 
 *2025-12-28 - Efficiency Patterns (from autonomous-coding analysis):*
+
 - Progressive compression checkpoints (50/70/80/85/90/95%)
 - Session resumption (hybrid fresh context + summary)
 - MVP-first feature breakdown (10/30/200 tiered features)
 - Async parallel operations (30-50% speedup for I/O tasks)
 - Sandbox fast-path (2-3x speedup for common commands)
+
+*2025-12-28 - Session Entry Protocol (from Effective Harnesses article):*
+
+- Added 3-phase session entry: Safety → State → Context
+- Added FIX_BROKEN state for broken app handling
+- Added project.json for project-specific configuration
+- Added block-if-broken hook to prevent feature work on broken apps
+- Merged Anthropic safety validation with existing state management
+
+*2025-12-28 - Git Integration (from Effective Harnesses article):*
+
+- Added feature-commit.sh for auto-commit with feature ID
+- Added session-commit.sh for checkpoint commits
+- Added require-commit-before-tested.py enforcement hook
+- Commit required before marking feature as tested

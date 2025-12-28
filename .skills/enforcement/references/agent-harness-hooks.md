@@ -433,6 +433,70 @@ if __name__ == "__main__":
 
 ---
 
+## Hook 8: Require Git Commit Before Tested
+
+**File**: `.claude/hooks/require-commit-before-tested.py`
+**Event**: PreToolUse (Write feature-list.json)
+**Purpose**: Block marking feature as tested without committing changes first
+
+From Anthropic Effective Harnesses: *"Git commit history with descriptive messages"*
+
+```python
+#!/usr/bin/env python3
+"""
+Block marking feature as tested without git commit.
+"""
+
+import json
+import sys
+import subprocess
+
+def has_uncommitted_changes() -> bool:
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True, text=True, timeout=5
+    )
+    return bool(result.stdout.strip())
+
+def main():
+    input_data = json.load(sys.stdin)
+    tool_input = input_data.get("tool_input", {})
+    file_path = tool_input.get("file_path", "")
+    content = tool_input.get("content", "")
+
+    # Only check writes to feature-list.json
+    if "feature-list.json" not in file_path:
+        sys.exit(0)
+
+    # Only check if setting status to "tested"
+    if '"status": "tested"' not in content:
+        sys.exit(0)
+
+    # Block if uncommitted changes exist
+    if has_uncommitted_changes():
+        print("BLOCKED: Cannot mark feature as tested with uncommitted changes", file=sys.stderr)
+        print("Run: .skills/implementation/scripts/feature-commit.sh <feature-id>", file=sys.stderr)
+        sys.exit(2)
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+```
+
+**Integration with feature-commit.sh**:
+```bash
+# 1. Implement feature
+# 2. Run tests
+# 3. Commit with feature ID
+.skills/implementation/scripts/feature-commit.sh feat-001 "Implement user login"
+
+# 4. Now marking tested will succeed
+# (hook checks for clean git status)
+```
+
+---
+
 ## Quick Reference
 
 | Hook | Blocks | Event | Use Case |
@@ -446,3 +510,4 @@ if __name__ == "__main__":
 | require-determinism.py | Critical ops without temp=0 | PreToolUse | Determinism |
 | verify-mcp-sandboxed.py | Unwrapped MCP servers | PreToolUse | Layer 2 security isolation |
 | verify-srt-config.py | Sensitive path access | PermissionRequest | Defense-in-depth file protection |
+| require-commit-before-tested.py | tested:true without commit | PreToolUse | Git integration |

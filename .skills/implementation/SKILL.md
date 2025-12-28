@@ -15,7 +15,8 @@ Feature development for IMPLEMENT state.
 3. Implement following project patterns (see references/)
 4. Write tests alongside code
 5. Run health check: `scripts/health-check.sh`
-6. Mark complete: `scripts/mark-feature-complete.sh`
+6. **Git commit**: `scripts/feature-commit.sh <feature-id>`
+7. Mark complete: `scripts/mark-feature-complete.sh`
 
 ## Exit Criteria (Code Verified)
 
@@ -23,8 +24,16 @@ Feature development for IMPLEMENT state.
 # All must pass
 scripts/health-check.sh && echo "Health OK"
 [ -f "tests/test_*.py" ] || [ -f "*.test.ts" ]
+[ -z "$(git status --porcelain)" ] && echo "Changes committed"
 jq '.features[] | select(.id=="'$FEATURE_ID'") | .status == "implemented"' .claude/progress/feature-list.json
 ```
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/feature-commit.sh` | Commit with feature ID message |
+| `scripts/session-commit.sh` | Checkpoint commit at session end |
 
 ## References
 
