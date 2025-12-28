@@ -17,6 +17,40 @@ log() {
 
 log "=== DEPENDENCY CHECK ==="
 
+# ─────────────────────────────────────────────────────────────────
+# 0. Check MCP servers first (agent-harness requires token-efficient + context-graph)
+# ─────────────────────────────────────────────────────────────────
+
+log ""
+log "Checking MCP servers..."
+
+# Find and run mcp-setup verification if available
+MCP_VERIFY_SCRIPT=""
+for path in \
+    "../../.skills/mcp-setup/scripts/verify-setup.sh" \
+    ".skills/mcp-setup/scripts/verify-setup.sh"
+do
+    if [ -f "$path" ]; then
+        MCP_VERIFY_SCRIPT="$path"
+        break
+    fi
+done
+
+if [ -n "$MCP_VERIFY_SCRIPT" ]; then
+    log "  Running MCP setup verification..."
+    bash "$MCP_VERIFY_SCRIPT" 2>&1 | while IFS= read -r line; do
+        if [[ "$line" == *"✓"* ]]; then
+            log "    $line"
+        elif [[ "$line" == *"✗"* ]]; then
+            log "    $line"
+        elif [[ "$line" == *"Failed"* ]]; then
+            log "    $line"
+        fi
+    done
+else
+    log "  Note: mcp-setup skill not found - skipping MCP check"
+fi
+
 # Check if config exists
 if [ ! -f "$CONFIG_FILE" ]; then
     log "No project.json found - skipping dependency check"

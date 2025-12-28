@@ -10,13 +10,14 @@ Project setup and feature breakdown for INIT state.
 
 ## Instructions
 
-1. Detect project type: `scripts/detect-project.sh`
-2. Create init script: `scripts/create-init-script.sh`
-3. Check dependencies: `scripts/check-dependencies.sh`
-4. Analyze user requirements
-5. Break down into atomic features (INVEST criteria)
-6. Create feature-list.json: `scripts/create-feature-list.sh`
-7. Initialize progress tracking: `scripts/init-progress.sh`
+1. **Check MCP servers**: `check-dependencies.sh` runs mcp-setup verification first
+2. Detect project type: `scripts/detect-project.sh`
+3. Create init script: `scripts/create-init-script.sh`
+4. Check dependencies: `scripts/check-dependencies.sh`
+5. Analyze user requirements
+6. Break down into atomic features (INVEST criteria)
+7. Create feature-list.json: `scripts/create-feature-list.sh`
+8. Initialize progress tracking: `scripts/init-progress.sh`
 
 ## Exit Criteria (Code Verified)
 

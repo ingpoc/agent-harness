@@ -666,7 +666,7 @@ def create_skill_update(traces):
 | **P1** | Async parallel operations | Medium | 30-50% time savings | ✅ Added |
 | **P1** | Sandbox fast-path | Low | 2-3x speedup | ✅ Added |
 | **P1** | Verification scripts (pytest, curl) | Medium | Code > Judgment | |
-| **P1** | Tool defer_loading config | Low | 85% tool token savings | |
+| **P1** | Tool defer_loading config | - | 85% tool token savings | ⏳ API feature (see [#12836](https://github.com/anthropics/claude-code/issues/12836)) |
 | **P2** | Trace logging | Medium | Learning foundation | |
 | **P2** | Pattern detection | Medium | Auto-improvement | |
 | **P3** | Auto-skill generation | High | Self-evolving system | |

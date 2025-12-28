@@ -10,6 +10,19 @@
         "node",
         "/Users/gurusharan/Documents/remote-claude/token-efficient-mcp/dist/index.js"
       ]
+    },
+    "context-graph": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/gurusharan/Documents/remote-claude/agent-harness/context-graph-mcp",
+        "run",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "VOYAGE_API_KEY": "pa-xq4te3GFOurtIgm4HMuCSZ6H4lG4LvfaH9ZiiOarwjT"
+      }
     }
   }
- }
+}
