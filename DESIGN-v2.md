@@ -315,6 +315,35 @@ Implement → Test → feature-commit.sh → Mark tested
               Hook blocks if skipped
 ```
 
+### External Dependencies
+
+From Anthropic Effective Harnesses: *"init.sh script for development server startup"*
+
+| Script | Purpose | When |
+|--------|---------|------|
+| `check-dependencies.sh` | Validate env vars, ports, services | Session entry |
+| `create-init-script.sh [type]` | Generate init.sh for project type | Project initialization |
+| `require-dependencies.py` | Block feature work if deps missing | PreToolUse (Write to src/) |
+
+**Configuration** (`.claude/config/project.json`):
+```json
+{
+  "project_type": "fastapi",
+  "init_script": "./scripts/init.sh",
+  "dev_server_port": 8000,
+  "health_check": "curl -sf http://localhost:8000/health",
+  "required_env": ["DATABASE_URL", "API_KEY"],
+  "required_services": ["redis://localhost:6379"]
+}
+```
+
+**Flow:**
+```
+Session Entry → check-dependencies.sh → PASS → Continue
+                        ↓
+                      FAIL → Block feature work until fixed
+```
+
 ### Exit Code 2 Pattern (Blocking)
 
 ```python
@@ -742,3 +771,10 @@ def create_skill_update(traces):
 - Added session-commit.sh for checkpoint commits
 - Added require-commit-before-tested.py enforcement hook
 - Commit required before marking feature as tested
+
+*2025-12-28 - External Dependencies (from Effective Harnesses article):*
+
+- Added check-dependencies.sh for env vars, ports, services validation
+- Added create-init-script.sh for auto-generating init.sh by project type
+- Added require-dependencies.py enforcement hook (blocks src/ writes if deps missing)
+- Integrated dependency check into session entry protocol

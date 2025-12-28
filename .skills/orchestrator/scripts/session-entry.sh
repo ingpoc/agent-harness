@@ -48,8 +48,35 @@ else
     echo "SKIP (no project.json)"
 fi
 
-# 1.4 Health check (verify app not broken)
-echo -n "  [4/4] Health check: "
+# 1.4 External dependencies check
+echo -n "  [4/5] Dependencies: "
+DEP_STATUS="OK"
+DEP_CHECK_SCRIPT=".skills/initialization/scripts/check-dependencies.sh"
+
+if [ -f "$DEP_CHECK_SCRIPT" ]; then
+    DEP_RESULT=$("$DEP_CHECK_SCRIPT" --quiet 2>/dev/null || echo '{"status":"skipped"}')
+    DEP_CHECK=$(echo "$DEP_RESULT" | tail -1 | jq -r '.status // "skipped"')
+
+    if [ "$DEP_CHECK" = "failed" ]; then
+        DEP_STATUS="MISSING"
+        MISSING_ENV=$(echo "$DEP_RESULT" | tail -1 | jq -r '.error_list | join(", ")')
+        echo "FAILED"
+        echo ""
+        echo "  ⚠️  Missing dependencies: $MISSING_ENV"
+        echo "  Set required env vars before feature work"
+        echo ""
+    elif [ "$DEP_CHECK" = "warnings" ]; then
+        DEP_STATUS="WARNINGS"
+        echo "OK (with warnings)"
+    else
+        echo "OK"
+    fi
+else
+    echo "SKIP (no check script)"
+fi
+
+# 1.5 Health check (verify app not broken)
+echo -n "  [5/5] Health check: "
 HEALTH_STATUS="UNKNOWN"
 
 if [ -n "$HEALTH_CMD" ]; then
@@ -206,6 +233,7 @@ cat << EOF
 {
   "directory": "$CURRENT_DIR",
   "health_status": "$HEALTH_STATUS",
+  "dependency_status": "$DEP_STATUS",
   "feature_status": "$FEATURE_STATUS",
   "current_state": "$CURRENT_STATE",
   "next_state": "$NEXT_STATE",

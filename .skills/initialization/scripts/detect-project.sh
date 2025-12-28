@@ -1,53 +1,146 @@
 #!/bin/bash
-# Detect project type based on files present
-# Output: JSON with project type and framework
+# Detect project type from file markers
+# Usage: ./detect-project.sh [path]
+# Returns: JSON with project_type, framework, language
 
-detect_type() {
-    local type="unknown"
-    local framework=""
-    local package_manager=""
+set -e
 
-    # Python
-    if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
-        type="python"
-        package_manager="pip"
+PROJECT_DIR="${1:-.}"
+cd "$PROJECT_DIR"
 
-        if [ -f "manage.py" ]; then
-            framework="django"
-        elif grep -q "fastapi" requirements.txt 2>/dev/null || grep -q "fastapi" pyproject.toml 2>/dev/null; then
-            framework="fastapi"
-        elif grep -q "flask" requirements.txt 2>/dev/null || grep -q "flask" pyproject.toml 2>/dev/null; then
-            framework="flask"
-        fi
+# Default values
+PROJECT_TYPE="unknown"
+FRAMEWORK="none"
+LANGUAGE="unknown"
+PACKAGE_MANAGER="none"
+TEST_COMMAND=""
+DEV_COMMAND=""
+PORT=""
+
+# ─────────────────────────────────────────────────────────────────
+# Detect by file markers
+# ─────────────────────────────────────────────────────────────────
+
+# Python projects
+if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
+    LANGUAGE="python"
+    PACKAGE_MANAGER="pip"
+    TEST_COMMAND="pytest -q --tb=short"
+
+    # Check for specific frameworks
+    if grep -q "fastapi" pyproject.toml requirements.txt 2>/dev/null; then
+        FRAMEWORK="fastapi"
+        PROJECT_TYPE="api"
+        DEV_COMMAND="uvicorn main:app --reload"
+        PORT="8000"
+    elif grep -q "django" pyproject.toml requirements.txt 2>/dev/null; then
+        FRAMEWORK="django"
+        PROJECT_TYPE="web"
+        DEV_COMMAND="python manage.py runserver"
+        PORT="8000"
+    elif grep -q "flask" pyproject.toml requirements.txt 2>/dev/null; then
+        FRAMEWORK="flask"
+        PROJECT_TYPE="web"
+        DEV_COMMAND="flask run"
+        PORT="5000"
+    elif grep -q "streamlit" pyproject.toml requirements.txt 2>/dev/null; then
+        FRAMEWORK="streamlit"
+        PROJECT_TYPE="app"
+        DEV_COMMAND="streamlit run app.py"
+        PORT="8501"
+    else
+        PROJECT_TYPE="library"
     fi
 
-    # Node.js
-    if [ -f "package.json" ]; then
-        type="node"
-
-        if [ -f "yarn.lock" ]; then
-            package_manager="yarn"
-        elif [ -f "pnpm-lock.yaml" ]; then
-            package_manager="pnpm"
-        else
-            package_manager="npm"
-        fi
-
-        if grep -q '"next"' package.json 2>/dev/null; then
-            framework="nextjs"
-        elif grep -q '"react"' package.json 2>/dev/null; then
-            framework="react"
-        elif grep -q '"express"' package.json 2>/dev/null; then
-            framework="express"
-        fi
+    # Check for poetry
+    if [ -f "poetry.lock" ]; then
+        PACKAGE_MANAGER="poetry"
     fi
 
-    # TypeScript
+# Node.js projects
+elif [ -f "package.json" ]; then
+    LANGUAGE="javascript"
+    PACKAGE_MANAGER="npm"
+
+    # Check for TypeScript
     if [ -f "tsconfig.json" ]; then
-        type="typescript"
+        LANGUAGE="typescript"
     fi
 
-    echo "{\"type\": \"$type\", \"framework\": \"$framework\", \"package_manager\": \"$package_manager\"}"
-}
+    # Check for yarn/pnpm
+    if [ -f "yarn.lock" ]; then
+        PACKAGE_MANAGER="yarn"
+    elif [ -f "pnpm-lock.yaml" ]; then
+        PACKAGE_MANAGER="pnpm"
+    fi
 
-detect_type
+    # Parse package.json for framework detection
+    if grep -q '"next"' package.json; then
+        FRAMEWORK="nextjs"
+        PROJECT_TYPE="web"
+        DEV_COMMAND="npm run dev"
+        TEST_COMMAND="npm test"
+        PORT="3000"
+    elif grep -q '"react"' package.json && grep -q '"vite"' package.json; then
+        FRAMEWORK="vite-react"
+        PROJECT_TYPE="web"
+        DEV_COMMAND="npm run dev"
+        TEST_COMMAND="npm test"
+        PORT="5173"
+    elif grep -q '"express"' package.json; then
+        FRAMEWORK="express"
+        PROJECT_TYPE="api"
+        DEV_COMMAND="npm run dev"
+        TEST_COMMAND="npm test"
+        PORT="3000"
+    else
+        PROJECT_TYPE="library"
+        TEST_COMMAND="npm test"
+    fi
+
+# Rust projects
+elif [ -f "Cargo.toml" ]; then
+    LANGUAGE="rust"
+    PACKAGE_MANAGER="cargo"
+    PROJECT_TYPE="library"
+    TEST_COMMAND="cargo test"
+
+# Go projects
+elif [ -f "go.mod" ]; then
+    LANGUAGE="go"
+    PACKAGE_MANAGER="go"
+    PROJECT_TYPE="library"
+    TEST_COMMAND="go test ./..."
+    DEV_COMMAND="go run ."
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Detect entry points
+# ─────────────────────────────────────────────────────────────────
+
+ENTRY_POINTS=()
+[ -f "main.py" ] && ENTRY_POINTS+=("main.py")
+[ -f "app.py" ] && ENTRY_POINTS+=("app.py")
+[ -f "manage.py" ] && ENTRY_POINTS+=("manage.py")
+[ -f "index.js" ] && ENTRY_POINTS+=("index.js")
+[ -f "index.ts" ] && ENTRY_POINTS+=("index.ts")
+[ -f "src/index.ts" ] && ENTRY_POINTS+=("src/index.ts")
+
+ENTRY_JSON=$(printf '%s\n' "${ENTRY_POINTS[@]}" | jq -R . | jq -s .)
+
+# ─────────────────────────────────────────────────────────────────
+# Output JSON
+# ─────────────────────────────────────────────────────────────────
+
+cat << EOF
+{
+  "project_type": "$PROJECT_TYPE",
+  "framework": "$FRAMEWORK",
+  "language": "$LANGUAGE",
+  "package_manager": "$PACKAGE_MANAGER",
+  "test_command": "$TEST_COMMAND",
+  "dev_command": "$DEV_COMMAND",
+  "dev_port": ${PORT:-null},
+  "entry_points": $ENTRY_JSON
+}
+EOF

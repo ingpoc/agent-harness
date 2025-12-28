@@ -497,6 +497,88 @@ if __name__ == "__main__":
 
 ---
 
+## Hook 9: Require Dependencies Before Feature Work
+
+**File**: `.claude/hooks/require-dependencies.py`
+**Event**: PreToolUse (Write/Edit src/ files)
+**Purpose**: Block feature implementation if required dependencies are missing
+
+From Anthropic Effective Harnesses: *"init.sh script for development server startup"*
+
+```python
+#!/usr/bin/env python3
+"""
+Block feature work if required dependencies are missing.
+"""
+
+import json
+import sys
+import os
+
+def load_project_config() -> dict:
+    config_path = ".claude/config/project.json"
+    if os.path.exists(config_path):
+        with open(config_path) as f:
+            return json.load(f)
+    return {}
+
+def check_required_env(config: dict) -> list:
+    missing = []
+    required = config.get("required_env", [])
+    for var in required:
+        if not os.environ.get(var):
+            missing.append(var)
+    return missing
+
+def main():
+    input_data = json.load(sys.stdin)
+    tool_input = input_data.get("tool_input", {})
+    file_path = tool_input.get("file_path", "")
+
+    # Only check writes to src/ files (feature implementation)
+    if not file_path:
+        sys.exit(0)
+
+    # Allow writes to config and progress files
+    if ".claude/" in file_path or "config" in file_path:
+        sys.exit(0)
+
+    # Only check src/ or app/ directories
+    is_source_file = any(x in file_path for x in ["/src/", "/app/", "/lib/", "/components/"])
+    if not is_source_file:
+        sys.exit(0)
+
+    # Load config and check dependencies
+    config = load_project_config()
+    if not config:
+        sys.exit(0)
+
+    missing_env = check_required_env(config)
+
+    if missing_env:
+        print("BLOCKED: Missing required environment variables", file=sys.stderr)
+        for var in missing_env:
+            print(f"  - {var}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Set these variables before implementing features:", file=sys.stderr)
+        print(f"  export {missing_env[0]}=your_value", file=sys.stderr)
+        sys.exit(2)
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+```
+
+**Configuration** (`.claude/config/project.json`):
+```json
+{
+  "required_env": ["DATABASE_URL", "API_KEY", "SECRET_KEY"]
+}
+```
+
+---
+
 ## Quick Reference
 
 | Hook | Blocks | Event | Use Case |
@@ -511,3 +593,4 @@ if __name__ == "__main__":
 | verify-mcp-sandboxed.py | Unwrapped MCP servers | PreToolUse | Layer 2 security isolation |
 | verify-srt-config.py | Sensitive path access | PermissionRequest | Defense-in-depth file protection |
 | require-commit-before-tested.py | tested:true without commit | PreToolUse | Git integration |
+| require-dependencies.py | src/ writes without deps | PreToolUse | External dependencies |

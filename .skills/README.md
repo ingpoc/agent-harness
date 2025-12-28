@@ -4,15 +4,17 @@ Official Anthropic Skills pattern. Single orchestrator + skills architecture per
 
 ## Skills Index
 
-| Skill | State | Purpose |
-|-------|-------|---------|
-| **orchestrator/** | All | State machine, compression, session management |
-| **initialization/** | INIT | Feature breakdown, project detection, MVP-first tiers |
-| **implementation/** | IMPLEMENT | Coding patterns, async parallel ops, MCP usage |
-| **testing/** | TEST | Unit, API, browser, database testing |
-| **determinism/** | All | Code verification, prompt versioning |
-| **enforcement/** | All | Blocking hooks, quality gates, sandbox isolation |
-| **context-graph/** | COMPLETE | Learning loops, trace storage |
+| Skill | State | Purpose | Scripts |
+|-------|-------|---------|---------|
+| **orchestrator/** | All | State machine, session management | session-entry.sh, check-state.sh, transition-state.sh |
+| **initialization/** | INIT | Feature breakdown, project detection | detect-project.sh, create-feature-list.sh, init-progress.sh, check-dependencies.sh |
+| **implementation/** | IMPLEMENT | Coding patterns, git commits | get-current-feature.sh, feature-commit.sh, health-check.sh |
+| **testing/** | TEST | Unit, API, browser testing | run-unit-tests.sh, run-api-tests.sh, collect-evidence.sh |
+| **determinism/** | All | Code verification | validate-prompt.sh, verify-json.sh |
+| **enforcement/** | All | Blocking hooks (exit 2) | validate-transition.py, require-dependencies.py, require-commit-before-tested.py |
+| **context-graph/** | COMPLETE | Learning loops, traces | store-trace.sh, query-traces.sh, apply-learning.sh |
+| **browser-testing/** | TEST | Chrome integration | smoke-test.sh, verify-page-load.sh |
+| **token-efficient/** | All | Sandbox processing | process-csv.sh, search-logs.sh |
 
 ## State Machine
 
