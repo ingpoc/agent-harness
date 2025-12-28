@@ -1,24 +1,35 @@
 #!/bin/bash
 # Run basic smoke test on URL
-# Usage: smoke-test.sh URL
+# Usage: smoke-test.sh [URL]
 # Exit: 0 = pass, 1 = fail
+# Config: .claude/config/project.json → dev_server_port (fallback if no URL)
 
-URL=$1
 EVIDENCE_DIR="/tmp/test-evidence"
+mkdir -p "$EVIDENCE_DIR"
+
+# ─────────────────────────────────────────────────────────────────
+# Config helper (self-contained)
+# ─────────────────────────────────────────────────────────────────
+CONFIG="$PWD/.claude/config/project.json"
+get_config() { jq -r ".$1 // empty" "$CONFIG" 2>/dev/null || echo "$2"; }
+
+# ─────────────────────────────────────────────────────────────────
+# Get URL (param → config → default)
+# ─────────────────────────────────────────────────────────────────
+URL=$1
 
 if [ -z "$URL" ]; then
-    echo "Usage: smoke-test.sh URL"
-    exit 1
+    PORT=$(get_config "dev_server_port" "3000")
+    URL="http://localhost:$PORT"
+    echo "No URL provided, using config: $URL"
 fi
-
-mkdir -p "$EVIDENCE_DIR"
 
 echo "=== Smoke Test: $URL ==="
 ERRORS=0
 
 # 1. Check HTTP reachability
 echo "1. Checking HTTP..."
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" 2>/dev/null)
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" 2>/dev/null || echo "000")
 if [ "$STATUS" = "200" ]; then
     echo "   ✓ HTTP 200"
 else
@@ -28,8 +39,8 @@ fi
 
 # 2. Check response time
 echo "2. Checking response time..."
-TIME=$(curl -s -o /dev/null -w "%{time_total}" --max-time 10 "$URL" 2>/dev/null)
-if (( $(echo "$TIME < 3.0" | bc -l) )); then
+TIME=$(curl -s -o /dev/null -w "%{time_total}" --max-time 10 "$URL" 2>/dev/null || echo "0")
+if (( $(echo "$TIME < 3.0" | bc -l 2>/dev/null || echo 1) )); then
     echo "   ✓ Response time: ${TIME}s"
 else
     echo "   ⚠ Slow response: ${TIME}s"
@@ -50,16 +61,9 @@ cat > "$EVIDENCE_DIR/smoke-test.json" << EOF
   "url": "$URL",
   "http_status": "$STATUS",
   "response_time": "$TIME",
-  "passed": $([ $ERRORS -eq 0 ] && echo true || echo false),
-  "timestamp": "$(date -Iseconds)"
+  "passed": $([ $ERRORS -eq 0 ] && echo true || echo false)
 }
 EOF
 
-echo ""
-if [ $ERRORS -eq 0 ]; then
-    echo "=== Smoke Test PASSED ==="
-    exit 0
-else
-    echo "=== Smoke Test FAILED ==="
-    exit 1
-fi
+[ $ERRORS -eq 0 ] && echo "=== PASSED ===" && exit 0
+echo "=== FAILED ===" && exit 1

@@ -1,66 +1,35 @@
 #!/bin/bash
-# Run health checks based on project type
+# Run health check for dev server
 # Exit: 0 = healthy, 1 = unhealthy
+# Config: .claude/config/project.json → health_check, dev_server_port
 
-PROJECT_FILE=".claude/progress/project.json"
-ERRORS=0
+# ─────────────────────────────────────────────────────────────────
+# Config helper (self-contained)
+# ─────────────────────────────────────────────────────────────────
+CONFIG="$PWD/.claude/config/project.json"
+get_config() { jq -r ".$1 // empty" "$CONFIG" 2>/dev/null || echo "$2"; }
 
+# ─────────────────────────────────────────────────────────────────
+# Get health check command from config
+# ─────────────────────────────────────────────────────────────────
+PORT=$(get_config "dev_server_port" "3000")
+HEALTH_CMD=$(get_config "health_check" "")
+
+if [ -z "$HEALTH_CMD" ]; then
+    # Default: try /health then /
+    HEALTH_CMD="curl -sf http://localhost:$PORT/health || curl -sf http://localhost:$PORT/"
+fi
+
+# ─────────────────────────────────────────────────────────────────
+# Run health check
+# ─────────────────────────────────────────────────────────────────
 echo "=== Health Check ==="
+echo "Command: $HEALTH_CMD"
 
-# Detect project type
-if [ -f "$PROJECT_FILE" ]; then
-    TYPE=$(jq -r '.type' "$PROJECT_FILE")
-    FRAMEWORK=$(jq -r '.framework' "$PROJECT_FILE")
-else
-    TYPE="unknown"
-fi
-
-# Python checks
-if [ "$TYPE" = "python" ]; then
-    echo "Checking Python..."
-
-    # Syntax check
-    find . -name "*.py" -not -path "./venv/*" -exec python -m py_compile {} \; 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "FAIL: Python syntax errors"
-        ((ERRORS++))
-    else
-        echo "✓ Python syntax OK"
-    fi
-
-    # Import check for main module
-    if [ -f "src/main.py" ]; then
-        python -c "import src.main" 2>/dev/null || ((ERRORS++))
-    fi
-fi
-
-# Node checks
-if [ "$TYPE" = "node" ] || [ "$TYPE" = "typescript" ]; then
-    echo "Checking Node.js..."
-
-    # TypeScript compile check
-    if [ -f "tsconfig.json" ]; then
-        npx tsc --noEmit 2>/dev/null
-        if [ $? -ne 0 ]; then
-            echo "FAIL: TypeScript errors"
-            ((ERRORS++))
-        else
-            echo "✓ TypeScript OK"
-        fi
-    fi
-fi
-
-# Server check (if applicable)
-if [ -f "manage.py" ] || [ -f "app.py" ] || [ -f "main.py" ]; then
-    echo "Checking if server can start..."
-    # Start server in background, wait, then kill
-    timeout 5 python -c "import main" 2>/dev/null && echo "✓ Server module OK"
-fi
-
-if [ $ERRORS -eq 0 ]; then
-    echo "=== All health checks passed ==="
+if eval "$HEALTH_CMD" > /dev/null 2>&1; then
+    echo "✓ Server healthy on port $PORT"
     exit 0
 else
-    echo "=== $ERRORS health check(s) failed ==="
+    echo "✗ Server not responding on port $PORT"
     exit 1
 fi

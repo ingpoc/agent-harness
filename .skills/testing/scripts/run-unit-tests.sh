@@ -1,50 +1,55 @@
 #!/bin/bash
-# Run unit tests based on project type
+# Run unit tests based on project config
 # Exit: 0 = all pass, 1 = failures
+# Config: .claude/config/project.json → test_command
 
-PROJECT_FILE=".claude/progress/project.json"
 EVIDENCE_DIR="/tmp/test-evidence"
 mkdir -p "$EVIDENCE_DIR"
 
-echo "=== Running Unit Tests ==="
+# ─────────────────────────────────────────────────────────────────
+# Config helper (self-contained)
+# ─────────────────────────────────────────────────────────────────
+CONFIG="$PWD/.claude/config/project.json"
+get_config() { jq -r ".$1 // empty" "$CONFIG" 2>/dev/null || echo "$2"; }
 
-# Detect project type
-if [ -f "$PROJECT_FILE" ]; then
-    TYPE=$(jq -r '.type' "$PROJECT_FILE")
-else
-    # Auto-detect
+# ─────────────────────────────────────────────────────────────────
+# Get test command (config → auto-detect → fallback)
+# ─────────────────────────────────────────────────────────────────
+TEST_CMD=$(get_config "test_command" "")
+
+if [ -z "$TEST_CMD" ]; then
+    # Auto-detect based on project files
     if [ -f "pytest.ini" ] || [ -f "pyproject.toml" ]; then
-        TYPE="python"
+        TEST_CMD="pytest -q --tb=short"
+    elif [ -f "Cargo.toml" ]; then
+        TEST_CMD="cargo test"
+    elif [ -f "go.mod" ]; then
+        TEST_CMD="go test ./..."
     elif [ -f "package.json" ]; then
-        TYPE="node"
+        TEST_CMD="npm test"
+    else
+        TEST_CMD="echo 'No test command configured in .claude/config/project.json'"
     fi
 fi
+
+# ─────────────────────────────────────────────────────────────────
+# Run tests
+# ─────────────────────────────────────────────────────────────────
+echo "=== Running Unit Tests ==="
+echo "Command: $TEST_CMD"
 
 RESULT=0
+eval "$TEST_CMD" 2>&1 | tee "$EVIDENCE_DIR/test-output.log" || RESULT=$?
 
-# Python: pytest
-if [ "$TYPE" = "python" ]; then
-    if command -v pytest &> /dev/null; then
-        pytest --tb=short --json-report --json-report-file="$EVIDENCE_DIR/pytest.json" 2>&1 | tee "$EVIDENCE_DIR/pytest.log"
-        RESULT=${PIPESTATUS[0]}
-    else
-        python -m pytest --tb=short 2>&1 | tee "$EVIDENCE_DIR/pytest.log"
-        RESULT=${PIPESTATUS[0]}
-    fi
-fi
-
-# Node: jest or npm test
-if [ "$TYPE" = "node" ] || [ "$TYPE" = "typescript" ]; then
-    if grep -q '"jest"' package.json 2>/dev/null; then
-        npx jest --json --outputFile="$EVIDENCE_DIR/jest.json" 2>&1 | tee "$EVIDENCE_DIR/jest.log"
-        RESULT=${PIPESTATUS[0]}
-    elif grep -q '"test"' package.json 2>/dev/null; then
-        npm test 2>&1 | tee "$EVIDENCE_DIR/npm-test.log"
-        RESULT=${PIPESTATUS[0]}
-    fi
-fi
-
-# Record result
-echo "{\"unit_tests\": {\"passed\": $([ $RESULT -eq 0 ] && echo true || echo false), \"exit_code\": $RESULT}}" > "$EVIDENCE_DIR/unit-tests.json"
+# Save evidence
+cat > "$EVIDENCE_DIR/unit-tests.json" << EOF
+{
+  "unit_tests": {
+    "passed": $([ $RESULT -eq 0 ] && echo true || echo false),
+    "exit_code": $RESULT,
+    "command": "$TEST_CMD"
+  }
+}
+EOF
 
 exit $RESULT

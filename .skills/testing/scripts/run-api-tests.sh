@@ -1,18 +1,32 @@
 #!/bin/bash
 # Run API endpoint tests
 # Exit: 0 = all pass, 1 = failures
+# Config: .claude/config/project.json → api_url, dev_server_port
 
 EVIDENCE_DIR="/tmp/test-evidence"
 mkdir -p "$EVIDENCE_DIR"
 
-BASE_URL="${API_URL:-http://localhost:8000}"
+# ─────────────────────────────────────────────────────────────────
+# Config helper (self-contained)
+# ─────────────────────────────────────────────────────────────────
+CONFIG="$PWD/.claude/config/project.json"
+get_config() { jq -r ".$1 // empty" "$CONFIG" 2>/dev/null || echo "$2"; }
+
+# ─────────────────────────────────────────────────────────────────
+# Get base URL from config
+# ─────────────────────────────────────────────────────────────────
+PORT=$(get_config "dev_server_port" "3000")
+BASE_URL=$(get_config "api_url" "http://localhost:$PORT")
+
 ERRORS=0
 TESTS=0
 
 echo "=== Running API Tests ==="
 echo "Base URL: $BASE_URL"
 
-# Test health endpoint
+# ─────────────────────────────────────────────────────────────────
+# Test endpoint helper
+# ─────────────────────────────────────────────────────────────────
 test_endpoint() {
     local method=$1
     local endpoint=$2
@@ -20,8 +34,7 @@ test_endpoint() {
     local description=$4
 
     ((TESTS++))
-
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$endpoint" --max-time 5)
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$endpoint" --max-time 5 2>/dev/null || echo "000")
 
     if [ "$STATUS" = "$expected_status" ]; then
         echo "✓ $description - $STATUS"
@@ -31,30 +44,23 @@ test_endpoint() {
     fi
 }
 
-# Common API tests
+# ─────────────────────────────────────────────────────────────────
+# Run tests
+# ─────────────────────────────────────────────────────────────────
 test_endpoint "GET" "/health" "200" "Health check"
 test_endpoint "GET" "/" "200" "Root endpoint"
 
-# Look for OpenAPI spec and test documented endpoints
-if curl -s "$BASE_URL/openapi.json" > /dev/null 2>&1; then
-    echo "Found OpenAPI spec, testing documented endpoints..."
-    # Could parse and test each endpoint
-fi
-
-# Save results
-echo "{
-  \"api_tests\": {
-    \"total\": $TESTS,
-    \"passed\": $((TESTS - ERRORS)),
-    \"failed\": $ERRORS,
-    \"passed\": $([ $ERRORS -eq 0 ] && echo true || echo false)
+# Save evidence
+cat > "$EVIDENCE_DIR/api-tests.json" << EOF
+{
+  "api_tests": {
+    "base_url": "$BASE_URL",
+    "total": $TESTS,
+    "passed": $((TESTS - ERRORS)),
+    "failed": $ERRORS,
+    "all_passed": $([ $ERRORS -eq 0 ] && echo true || echo false)
   }
-}" > "$EVIDENCE_DIR/api-tests.json"
+}
+EOF
 
-if [ $ERRORS -eq 0 ]; then
-    echo "=== All $TESTS API tests passed ==="
-    exit 0
-else
-    echo "=== $ERRORS of $TESTS API tests failed ==="
-    exit 1
-fi
+[ $ERRORS -eq 0 ] && exit 0 || exit 1
