@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Harness - Immersive Experience</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/DrawSVGPlugin.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+  <style>
+    :root {
+      --cream: #FAF9F5;
+      --charcoal: #141413;
+      --accent: #D97756;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--charcoal);
+      color: var(--cream);
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* Custom Cursor */
+    .cursor {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--cream);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: difference;
+      transform: translate(-50%, -50%);
+    }
+
+    .cursor-dot {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: var(--cream);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Sections */
+    section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark { background: var(--charcoal); color: var(--cream); }
+    .light { background: var(--cream); color: var(--charcoal); }
+
+    /* Hero */
+    .hero {
+      flex-direction: column;
+      padding: 60px;
+      width: 100%;
+    }
+
+    .hero-content {
+      text-align: center;
+      max-width: 900px;
+      z-index: 2;
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .hero-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(3rem, 8vw, 7rem);
+      font-weight: 400;
+      line-height: 1.1;
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .hero-title .line {
+      display: block;
+      overflow: hidden;
+    }
+
+    .hero-title .word {
+      display: inline-block;
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      opacity: 0;
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .hero-svg path {
+      stroke: var(--cream);
+      stroke-width: 2;
+      fill: none;
+      opacity: 0.15;
+    }
+
+    /* Scroll Indicator */
+    .scroll-indicator {
+      position: absolute;
+      bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+    }
+
+    .scroll-indicator span {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 60px;
+      background: linear-gradient(to bottom, var(--cream), transparent);
+    }
+
+    /* Chapter Sections */
+    .chapter {
+      padding: 120px 60px;
+      min-height: 100vh;
+    }
+
+    .chapter-inner {
+      max-width: 1400px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 100px;
+      align-items: center;
+    }
+
+    .chapter-inner.reverse { direction: rtl; }
+    .chapter-inner.reverse > * { direction: ltr; }
+
+    .chapter-number {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(6rem, 15vw, 12rem);
+      font-style: italic;
+      opacity: 0.08;
+      position: absolute;
+      top: 20px;
+      left: 40px;
+      line-height: 1;
+    }
+
+    .chapter-content {
+      opacity: 0;
+      transform: translateY(60px);
+    }
+
+    .chapter-label {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .chapter-label::before {
+      content: '';
+      width: 40px;
+      height: 1px;
+      background: currentColor;
+      opacity: 0.5;
+    }
+
+    .chapter-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 30px;
+    }
+
+    .chapter-description {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      opacity: 0.8;
+      max-width: 500px;
+    }
+
+    .chapter-description p { margin-bottom: 1.5em; }
+
+    /* SVG Illustrations */
+    .illustration {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+    }
+
+    .illustration svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .illustration .draw-path {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+    }
+
+    .illustration .fill-path {
+      opacity: 0;
+      transform-origin: center;
+    }
+
+    .illustration .orbit-element {
+      transform-origin: center;
+    }
+
+    /* Quote Section */
+    .quote-section {
+      text-align: center;
+      padding: 120px 60px;
+    }
+
+    .quote {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(1.5rem, 4vw, 3rem);
+      font-style: italic;
+      max-width: 900px;
+      line-height: 1.5;
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    .quote-mark {
+      font-size: 4em;
+      line-height: 0;
+      vertical-align: middle;
+      opacity: 0.3;
+      margin-right: 10px;
+    }
+
+    /* Finale */
+    .finale {
+      flex-direction: column;
+      text-align: center;
+      padding: 120px 60px;
+    }
+
+    .finale-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      margin-bottom: 30px;
+      opacity: 0;
+    }
+
+    .finale-text {
+      font-size: 1.25rem;
+      max-width: 700px;
+      line-height: 1.8;
+      opacity: 0;
+    }
+
+    .finale-svg {
+      width: 300px;
+      height: 300px;
+      margin-bottom: 60px;
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: var(--accent);
+      width: 0%;
+      z-index: 9999;
+    }
+
+    /* Floating Particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--cream);
+      border-radius: 50%;
+      opacity: 0.2;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .chapter-inner {
+        grid-template-columns: 1fr;
+        gap: 60px;
+      }
+      .chapter-inner.reverse { direction: ltr; }
+      .illustration { max-width: 400px; margin: 0 auto; }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar"></div>
+
+  <!-- Custom Cursor -->
+  <div class="cursor"></div>
+  <div class="cursor-dot"></div>
+
+  <!-- Floating Particles -->
+  <div class="particles"></div>
+
+  <!-- Hero Section -->
+  <section class="hero dark">
+    <svg class="hero-svg" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice">
+      <!-- Animated background paths -->
+      <path class="hero-line" d="M0 500 Q250 300 500 500 T1000 500" />
+      <path class="hero-line" d="M0 400 Q250 600 500 400 T1000 400" />
+      <path class="hero-line" d="M0 600 Q250 400 500 600 T1000 600" />
+      <path class="hero-line" d="M0 300 Q250 500 500 300 T1000 300" />
+      <path class="hero-line" d="M0 700 Q250 500 500 700 T1000 700" />
+    </svg>
+
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="line">
+          <span class="word">Agent</span>
+          <span class="word">Harness</span>
+        </span>
+        <span class="line">
+          <span class="word">Four</span>
+          <span class="word">Layers</span>
+          <span class="word">of</span>
+          <span class="word">Control</span>
+        </span>
+      </h1>
+      <p class="hero-subtitle">
+        A systematic approach to building reliable AI agents through
+        determinism, orchestration, enforcement, and continuous learning.
+      </p>
+    </div>
+
+    <div class="scroll-indicator">
+      <span>Scroll to explore</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- Layer 1: Determinism -->
+  <section class="chapter light" data-chapter="1">
+    <span class="chapter-number">01</span>
+    <div class="chapter-inner">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer One</p>
+        <h2 class="chapter-title">Determinism</h2>
+        <div class="chapter-description">
+          <p>Replace probabilistic judgment with verifiable code. Every decision point becomes a function that returns consistent, testable results.</p>
+          <p>Hash-versioned prompts ensure reproducibility. Boolean exit codes replace subjective assessments.</p>
+        </div>
+      </div>
+      <div class="illustration" id="ill-determinism">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Central hub -->
+          <circle class="fill-path" cx="250" cy="250" r="60" fill="#141413"/>
+          <circle class="fill-path" cx="250" cy="250" r="40" fill="#FAF9F5"/>
+          <circle class="fill-path" cx="250" cy="250" r="20" fill="#141413"/>
+
+          <!-- Orbiting nodes -->
+          <g class="orbit-group-1">
+            <circle class="orbit-element" cx="250" cy="120" r="25" fill="#141413"/>
+            <circle class="orbit-element" cx="250" cy="120" r="12" fill="#FAF9F5"/>
+          </g>
+          <g class="orbit-group-2">
+            <circle class="orbit-element" cx="380" cy="250" r="25" fill="#141413"/>
+            <circle class="orbit-element" cx="380" cy="250" r="12" fill="#FAF9F5"/>
+          </g>
+          <g class="orbit-group-3">
+            <circle class="orbit-element" cx="250" cy="380" r="25" fill="#141413"/>
+            <circle class="orbit-element" cx="250" cy="380" r="12" fill="#FAF9F5"/>
+          </g>
+          <g class="orbit-group-4">
+            <circle class="orbit-element" cx="120" cy="250" r="25" fill="#141413"/>
+            <circle class="orbit-element" cx="120" cy="250" r="12" fill="#FAF9F5"/>
+          </g>
+
+          <!-- Connection lines -->
+          <path class="draw-path" d="M250 190 L250 210" stroke="#141413" stroke-width="2"/>
+          <path class="draw-path" d="M310 250 L290 250" stroke="#141413" stroke-width="2"/>
+          <path class="draw-path" d="M250 310 L250 290" stroke="#141413" stroke-width="2"/>
+          <path class="draw-path" d="M190 250 L210 250" stroke="#141413" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Layer 2: Orchestration -->
+  <section class="chapter dark" data-chapter="2">
+    <span class="chapter-number">02</span>
+    <div class="chapter-inner reverse">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Two</p>
+        <h2 class="chapter-title">Orchestration</h2>
+        <div class="chapter-description">
+          <p>A single orchestrator maintains full context while delegating to specialized skills. No subagent spawning, no context fragmentation.</p>
+          <p>Progressive disclosure loads knowledge on-demand, achieving 98% token savings.</p>
+        </div>
+      </div>
+      <div class="illustration" id="ill-orchestration">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Central orchestrator -->
+          <path class="fill-path" d="M250 180 Q280 150 310 180 Q340 210 310 240 Q280 270 250 240 Q220 210 250 180 Z" fill="#FAF9F5"/>
+
+          <!-- Skill nodes -->
+          <path class="fill-path skill-node" d="M150 120 Q170 100 190 120 Q210 140 190 160 Q170 180 150 160 Q130 140 150 120 Z" fill="#FAF9F5" opacity="0.6"/>
+          <path class="fill-path skill-node" d="M350 120 Q370 100 390 120 Q410 140 390 160 Q370 180 350 160 Q330 140 350 120 Z" fill="#FAF9F5" opacity="0.6"/>
+          <path class="fill-path skill-node" d="M120 280 Q140 260 160 280 Q180 300 160 320 Q140 340 120 320 Q100 300 120 280 Z" fill="#FAF9F5" opacity="0.6"/>
+          <path class="fill-path skill-node" d="M380 280 Q400 260 420 280 Q440 300 420 320 Q400 340 380 320 Q360 300 380 280 Z" fill="#FAF9F5" opacity="0.6"/>
+          <path class="fill-path skill-node" d="M250 380 Q270 360 290 380 Q310 400 290 420 Q270 440 250 420 Q230 400 250 380 Z" fill="#FAF9F5" opacity="0.6"/>
+
+          <!-- Connection paths -->
+          <path class="draw-path" d="M250 180 Q200 150 170 140" stroke="#FAF9F5" stroke-width="2" fill="none"/>
+          <path class="draw-path" d="M250 180 Q300 150 350 140" stroke="#FAF9F5" stroke-width="2" fill="none"/>
+          <path class="draw-path" d="M250 240 Q180 260 140 300" stroke="#FAF9F5" stroke-width="2" fill="none"/>
+          <path class="draw-path" d="M250 240 Q320 260 380 300" stroke="#FAF9F5" stroke-width="2" fill="none"/>
+          <path class="draw-path" d="M250 240 L250 380" stroke="#FAF9F5" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quote -->
+  <section class="quote-section dark">
+    <blockquote class="quote">
+      <span class="quote-mark">"</span>
+      Rules are instructions. Hooks are enforcement. The difference is everything.
+    </blockquote>
+  </section>
+
+  <!-- Layer 3: Enforcement -->
+  <section class="chapter light" data-chapter="3">
+    <span class="chapter-number">03</span>
+    <div class="chapter-inner">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Three</p>
+        <h2 class="chapter-title">Enforcement</h2>
+        <div class="chapter-description">
+          <p>External hooks block invalid actions before they execute. Exit code 2 halts dangerous operations. JSON permission decisions deny risky requests.</p>
+          <p>Quality gates verify state transitions. No task completes without passing enforcement.</p>
+        </div>
+      </div>
+      <div class="illustration" id="ill-enforcement">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Gateway arches -->
+          <path class="fill-path gate-1" d="M100 400 Q150 200 250 180 Q350 200 400 400 L380 400 Q340 220 250 200 Q160 220 120 400 Z" fill="#141413"/>
+          <path class="fill-path gate-2" d="M130 380 Q170 220 250 200 Q330 220 370 380 L350 380 Q320 240 250 220 Q180 240 150 380 Z" fill="#141413" opacity="0.6"/>
+          <path class="fill-path gate-3" d="M160 360 Q190 240 250 220 Q310 240 340 360 L320 360 Q300 260 250 240 Q200 260 180 360 Z" fill="#141413" opacity="0.3"/>
+
+          <!-- Lock symbol -->
+          <rect class="fill-path lock" x="225" y="120" width="50" height="40" rx="5" fill="#141413"/>
+          <path class="draw-path lock-shackle" d="M235 120 L235 100 Q235 80 250 80 Q265 80 265 100 L265 120" stroke="#141413" stroke-width="6" fill="none"/>
+          <circle class="fill-path" cx="250" cy="135" r="8" fill="#FAF9F5"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Layer 4: Learning -->
+  <section class="chapter dark" data-chapter="4">
+    <span class="chapter-number">04</span>
+    <div class="chapter-inner reverse">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Four</p>
+        <h2 class="chapter-title">Learning</h2>
+        <div class="chapter-description">
+          <p>Decision traces with semantic embeddings enable retrieval of past precedents. The system learns from history, not just instructions.</p>
+          <p>Corrections become permanent improvements. Success patterns propagate automatically.</p>
+        </div>
+      </div>
+      <div class="illustration" id="ill-learning">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Growing tree -->
+          <path class="draw-path trunk" d="M250 400 L250 280" stroke="#FAF9F5" stroke-width="8" stroke-linecap="round"/>
+          <path class="draw-path branch-1" d="M250 320 Q200 300 180 260" stroke="#FAF9F5" stroke-width="4" stroke-linecap="round"/>
+          <path class="draw-path branch-2" d="M250 320 Q300 300 320 260" stroke="#FAF9F5" stroke-width="4" stroke-linecap="round"/>
+          <path class="draw-path branch-3" d="M250 280 Q220 260 200 220" stroke="#FAF9F5" stroke-width="3" stroke-linecap="round"/>
+          <path class="draw-path branch-4" d="M250 280 Q280 260 300 220" stroke="#FAF9F5" stroke-width="3" stroke-linecap="round"/>
+          <path class="draw-path branch-5" d="M250 280 L250 200" stroke="#FAF9F5" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- Knowledge nodes -->
+          <circle class="fill-path node" cx="180" cy="260" r="20" fill="#FAF9F5"/>
+          <circle class="fill-path node" cx="320" cy="260" r="20" fill="#FAF9F5"/>
+          <circle class="fill-path node" cx="200" cy="220" r="15" fill="#FAF9F5" opacity="0.8"/>
+          <circle class="fill-path node" cx="300" cy="220" r="15" fill="#FAF9F5" opacity="0.8"/>
+          <circle class="fill-path node" cx="250" cy="200" r="18" fill="#FAF9F5"/>
+          <circle class="fill-path node" cx="250" cy="160" r="12" fill="#FAF9F5" opacity="0.6"/>
+          <circle class="fill-path node" cx="220" cy="180" r="10" fill="#FAF9F5" opacity="0.5"/>
+          <circle class="fill-path node" cx="280" cy="180" r="10" fill="#FAF9F5" opacity="0.5"/>
+
+          <!-- Root connections -->
+          <path class="draw-path root" d="M250 400 Q220 420 200 450" stroke="#FAF9F5" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+          <path class="draw-path root" d="M250 400 Q280 420 300 450" stroke="#FAF9F5" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Finale -->
+  <section class="finale dark">
+    <div class="illustration finale-svg" id="ill-finale">
+      <svg viewBox="0 0 400 400" fill="none">
+        <!-- Concentric rings -->
+        <circle class="fill-path ring-1" cx="200" cy="200" r="150" fill="#FAF9F5" opacity="0.1"/>
+        <circle class="fill-path ring-2" cx="200" cy="200" r="120" fill="#FAF9F5" opacity="0.2"/>
+        <circle class="fill-path ring-3" cx="200" cy="200" r="90" fill="#FAF9F5" opacity="0.3"/>
+        <circle class="fill-path ring-4" cx="200" cy="200" r="60" fill="#FAF9F5" opacity="0.5"/>
+        <circle class="fill-path ring-5" cx="200" cy="200" r="30" fill="#FAF9F5"/>
+
+        <!-- Orbiting dots -->
+        <circle class="orbit-dot" cx="200" cy="50" r="8" fill="#FAF9F5"/>
+        <circle class="orbit-dot" cx="200" cy="80" r="6" fill="#FAF9F5"/>
+        <circle class="orbit-dot" cx="200" cy="110" r="5" fill="#FAF9F5"/>
+      </svg>
+    </div>
+    <h2 class="finale-title">Build Reliable Agents</h2>
+    <p class="finale-text">
+      Four layers working in harmony. Determinism ensures consistency.
+      Orchestration manages complexity. Enforcement prevents errors.
+      Learning enables growth. Together, they form the harness.
+    </p>
+  </section>
+
+  <script>
+    // Register GSAP plugins
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Custom Cursor
+    const cursor = document.querySelector('.cursor');
+    const cursorDot = document.querySelector('.cursor-dot');
+    let cursorX = 0, cursorY = 0;
+    let dotX = 0, dotY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      cursorX = e.clientX;
+      cursorY = e.clientY;
+    });
+
+    function animateCursor() {
+      dotX += (cursorX - dotX) * 0.5;
+      dotY += (cursorY - dotY) * 0.5;
+
+      cursor.style.left = cursorX + 'px';
+      cursor.style.top = cursorY + 'px';
+      cursorDot.style.left = dotX + 'px';
+      cursorDot.style.top = dotY + 'px';
+
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // Touch device detection
+    if ('ontouchstart' in window) {
+      cursor.style.display = 'none';
+      cursorDot.style.display = 'none';
+      document.body.style.cursor = 'auto';
+    }
+
+    // Progress Bar
+    gsap.to('.progress-bar', {
+      width: '100%',
+      ease: 'none',
+      scrollTrigger: {
+        trigger: 'body',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 0.3
+      }
+    });
+
+    // Hero Animations
+    const heroTl = gsap.timeline({ delay: 0.5 });
+
+    heroTl.to('.hero-title .word', {
+      y: 0,
+      opacity: 1,
+      duration: 1,
+      stagger: 0.1,
+      ease: 'power3.out'
+    })
+    .to('.hero-subtitle', {
+      opacity: 1,
+      duration: 1,
+      ease: 'power2.out'
+    }, '-=0.5')
+    .to('.scroll-indicator', {
+      opacity: 1,
+      duration: 0.8
+    }, '-=0.3');
+
+    // Hero background lines
+    gsap.to('.hero-line', {
+      strokeDashoffset: -1000,
+      duration: 20,
+      repeat: -1,
+      ease: 'none',
+      stagger: 2
+    });
+
+    // Set initial stroke dash
+    document.querySelectorAll('.hero-line').forEach(line => {
+      line.style.strokeDasharray = '20 30';
+      line.style.strokeDashoffset = '0';
+    });
+
+    // Chapter Animations
+    document.querySelectorAll('.chapter').forEach((chapter, index) => {
+      const content = chapter.querySelector('.chapter-content');
+      const illustration = chapter.querySelector('.illustration');
+      const fillPaths = illustration?.querySelectorAll('.fill-path');
+      const drawPaths = illustration?.querySelectorAll('.draw-path');
+
+      // Content reveal
+      gsap.to(content, {
+        opacity: 1,
+        y: 0,
+        duration: 1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: chapter,
+          start: 'top 70%',
+          toggleActions: 'play none none reverse'
+        }
+      });
+
+      // Fill paths fade in
+      if (fillPaths) {
+        gsap.to(fillPaths, {
+          opacity: 1,
+          scale: 1,
+          duration: 0.8,
+          stagger: 0.1,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: illustration,
+            start: 'top 80%',
+            toggleActions: 'play none none reverse'
+          }
+        });
+      }
+
+      // Draw paths animation
+      if (drawPaths) {
+        drawPaths.forEach(path => {
+          const length = path.getTotalLength ? path.getTotalLength() : 1000;
+          path.style.strokeDasharray = length;
+          path.style.strokeDashoffset = length;
+        });
+
+        gsap.to(drawPaths, {
+          strokeDashoffset: 0,
+          duration: 1.5,
+          stagger: 0.2,
+          ease: 'power2.inOut',
+          scrollTrigger: {
+            trigger: illustration,
+            start: 'top 70%',
+            toggleActions: 'play none none reverse'
+          }
+        });
+      }
+    });
+
+    // Determinism - Orbit Animation
+    const orbitGroups = document.querySelectorAll('[class^="orbit-group"]');
+    orbitGroups.forEach((group, i) => {
+      gsap.to(group, {
+        rotation: 360,
+        duration: 20 + i * 5,
+        repeat: -1,
+        ease: 'none',
+        transformOrigin: '250px 250px'
+      });
+    });
+
+    // Quote Animation
+    gsap.to('.quote', {
+      opacity: 1,
+      scale: 1,
+      duration: 1.2,
+      ease: 'power3.out',
+      scrollTrigger: {
+        trigger: '.quote-section',
+        start: 'top 60%',
+        toggleActions: 'play none none reverse'
+      }
+    });
+
+    // Finale Animation
+    const finaleTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: '.finale',
+        start: 'top 60%',
+        toggleActions: 'play none none reverse'
+      }
+    });
+
+    finaleTl.to('.finale .fill-path', {
+      opacity: 1,
+      scale: 1,
+      duration: 0.6,
+      stagger: 0.1,
+      ease: 'power2.out'
+    })
+    .to('.finale-title', {
+      opacity: 1,
+      duration: 0.8
+    }, '-=0.3')
+    .to('.finale-text', {
+      opacity: 1,
+      duration: 0.8
+    }, '-=0.4');
+
+    // Finale orbit dots
+    document.querySelectorAll('.orbit-dot').forEach((dot, i) => {
+      const radius = 150 - i * 30;
+      gsap.to(dot, {
+        motionPath: {
+          path: `M200,${200-radius} A${radius},${radius} 0 1,1 199.9,${200-radius}`,
+          autoRotate: false
+        },
+        duration: 10 + i * 3,
+        repeat: -1,
+        ease: 'none'
+      });
+    });
+
+    // Floating Particles
+    const particlesContainer = document.querySelector('.particles');
+    for (let i = 0; i < 30; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.top = Math.random() * 100 + '%';
+      particlesContainer.appendChild(particle);
+
+      gsap.to(particle, {
+        y: -100 - Math.random() * 200,
+        x: (Math.random() - 0.5) * 100,
+        opacity: 0,
+        duration: 5 + Math.random() * 10,
+        repeat: -1,
+        delay: Math.random() * 5,
+        ease: 'none'
+      });
+    }
+
+    // Parallax on scroll
+    gsap.utils.toArray('.illustration').forEach(ill => {
+      gsap.to(ill, {
+        y: -50,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: ill,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1
+        }
+      });
+    });
+
+    // Chapter numbers parallax
+    gsap.utils.toArray('.chapter-number').forEach(num => {
+      gsap.to(num, {
+        y: 100,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: num.parentElement,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1
+        }
+      });
+    });
+  </script>
+</body>
+</html>

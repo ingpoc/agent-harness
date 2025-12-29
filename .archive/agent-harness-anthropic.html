@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Harness - An Interactive Experience</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FAF9F5;
+      --charcoal: #141413;
+      --transition-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--charcoal);
+      color: var(--cream);
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* Custom Cursor */
+    .cursor {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--cream);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.1s ease, opacity 0.3s ease;
+      mix-blend-mode: difference;
+    }
+
+    .cursor-dot {
+      position: fixed;
+      width: 4px;
+      height: 4px;
+      background: var(--cream);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .cursor.hovering {
+      transform: scale(2);
+      background: rgba(250, 249, 245, 0.1);
+    }
+
+    /* Hero Section */
+    .hero {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.03;
+    }
+
+    .lamp-container {
+      position: relative;
+      width: 200px;
+      height: 300px;
+      margin-bottom: 40px;
+    }
+
+    .lamp-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .light-cone {
+      position: absolute;
+      bottom: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      height: 400px;
+      background: radial-gradient(ellipse at top, rgba(250, 249, 245, 0.15) 0%, transparent 70%);
+      clip-path: polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    .light-cone.visible {
+      opacity: 1;
+    }
+
+    .hero-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(3rem, 8vw, 7rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      text-align: center;
+      line-height: 1.1;
+      max-width: 900px;
+      padding: 0 20px;
+    }
+
+    .hero-title .line {
+      display: block;
+      overflow: hidden;
+    }
+
+    .hero-title .word {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(100%);
+      transition: opacity 0.8s var(--transition-smooth), transform 0.8s var(--transition-smooth);
+    }
+
+    .hero-title .word.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero-subtitle {
+      margin-top: 30px;
+      font-size: 1.1rem;
+      font-weight: 300;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 1s ease 0.5s, transform 1s ease 0.5s;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hero-subtitle.visible {
+      opacity: 0.6;
+      transform: translateY(0);
+    }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      animation: fadeInUp 1s ease 1.5s forwards;
+    }
+
+    .scroll-indicator span {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.4;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 60px;
+      background: linear-gradient(to bottom, var(--cream), transparent);
+      animation: scrollPulse 2s ease infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { transform: scaleY(1); opacity: 0.4; }
+      50% { transform: scaleY(0.5); opacity: 0.8; }
+    }
+
+    @keyframes fadeInUp {
+      to { opacity: 1; }
+    }
+
+    /* Chapter Sections */
+    .chapter {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 100px 40px;
+    }
+
+    .chapter.light {
+      background: var(--cream);
+      color: var(--charcoal);
+    }
+
+    .chapter.dark {
+      background: var(--charcoal);
+      color: var(--cream);
+    }
+
+    .chapter-inner {
+      max-width: 1400px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 100px;
+      align-items: center;
+    }
+
+    .chapter-inner.reverse {
+      direction: rtl;
+    }
+
+    .chapter-inner.reverse > * {
+      direction: ltr;
+    }
+
+    .chapter-number {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 8rem;
+      font-style: italic;
+      opacity: 0.1;
+      position: absolute;
+      top: 40px;
+      left: 40px;
+      line-height: 1;
+    }
+
+    .chapter.light .chapter-number {
+      color: var(--charcoal);
+    }
+
+    .chapter-content {
+      opacity: 0;
+      transform: translateY(60px);
+      transition: opacity 1s var(--transition-smooth), transform 1s var(--transition-smooth);
+    }
+
+    .chapter-content.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .chapter-label {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 20px;
+    }
+
+    .chapter-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 30px;
+    }
+
+    .chapter-description {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      opacity: 0.8;
+      max-width: 500px;
+    }
+
+    .chapter-description p {
+      margin-bottom: 1.5em;
+    }
+
+    .chapter-description p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Illustration Container */
+    .illustration {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 1.2s var(--transition-smooth), transform 1.2s var(--transition-smooth);
+    }
+
+    .illustration.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .illustration svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .illustration .organic-path {
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    .illustration.visible .organic-path {
+      opacity: 1;
+    }
+
+    .illustration.visible .organic-path:nth-child(1) { transition-delay: 0.2s; }
+    .illustration.visible .organic-path:nth-child(2) { transition-delay: 0.4s; }
+    .illustration.visible .organic-path:nth-child(3) { transition-delay: 0.6s; }
+
+    /* Interactive Spotlight Overlay */
+    .spotlight-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .spotlight-layer.active {
+      opacity: 1;
+    }
+
+    /* Transition Section */
+    .transition-section {
+      height: 50vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .transition-line {
+      width: 1px;
+      height: 0;
+      background: currentColor;
+      opacity: 0.2;
+      transition: height 1s var(--transition-smooth);
+    }
+
+    .transition-line.visible {
+      height: 150px;
+    }
+
+    /* Quote Section */
+    .quote-section {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 40px;
+      position: relative;
+    }
+
+    .quote {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-style: italic;
+      text-align: center;
+      max-width: 900px;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 1s ease, transform 1s ease;
+    }
+
+    .quote.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .quote-mark {
+      font-size: 6rem;
+      opacity: 0.1;
+      line-height: 0;
+      display: block;
+      margin-bottom: -20px;
+    }
+
+    /* Final Section */
+    .finale {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 40px;
+      position: relative;
+    }
+
+    .finale-illustration {
+      width: 400px;
+      height: 400px;
+      margin-bottom: 60px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 1.5s ease, transform 1.5s ease;
+    }
+
+    .finale-illustration.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .finale-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: clamp(2rem, 5vw, 4rem);
+      margin-bottom: 30px;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 1s ease 0.3s, transform 1s ease 0.3s;
+    }
+
+    .finale-title.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .finale-text {
+      font-size: 1.2rem;
+      opacity: 0;
+      max-width: 600px;
+      line-height: 1.8;
+      transition: opacity 1s ease 0.6s;
+    }
+
+    .finale-text.visible {
+      opacity: 0.7;
+    }
+
+    /* Floating Elements */
+    .float-element {
+      position: absolute;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .chapter-inner {
+        grid-template-columns: 1fr;
+        gap: 60px;
+      }
+
+      .chapter-inner.reverse {
+        direction: ltr;
+      }
+
+      .illustration {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      .chapter-number {
+        font-size: 5rem;
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Cursor -->
+  <div class="cursor"></div>
+  <div class="cursor-dot"></div>
+
+  <!-- Spotlight Layer -->
+  <svg class="spotlight-layer">
+    <defs>
+      <radialGradient id="spotlight-grad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="rgba(250, 249, 245, 0.08)"/>
+        <stop offset="100%" stop-color="transparent"/>
+      </radialGradient>
+    </defs>
+    <circle id="spotlight-circle" r="200" fill="url(#spotlight-grad)"/>
+  </svg>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <!-- Background Pattern -->
+    <svg class="hero-background" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice">
+      <path fill="#FAF9F5" d="M100,500 Q250,300 400,500 T700,500 T1000,500" stroke="none"/>
+      <path fill="#FAF9F5" d="M0,600 Q150,400 300,600 T600,600 T900,600" stroke="none"/>
+    </svg>
+
+    <!-- Desk Lamp -->
+    <div class="lamp-container">
+      <svg class="lamp-svg" viewBox="0 0 200 300" fill="none">
+        <!-- Lamp base -->
+        <ellipse cx="100" cy="280" rx="50" ry="12" fill="#FAF9F5" opacity="0.1"/>
+        <path d="M70 280 L75 260 L125 260 L130 280 Z" fill="#FAF9F5"/>
+
+        <!-- Lamp arm -->
+        <path d="M100 260 L100 180 Q100 160 85 150 L60 130" stroke="#FAF9F5" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+        <!-- Lamp head -->
+        <path d="M30 140 Q60 110 90 130 L60 160 Q40 150 30 140 Z" fill="#FAF9F5"/>
+
+        <!-- Light glow -->
+        <ellipse cx="55" cy="145" rx="8" ry="5" fill="#FAF9F5" opacity="0.6"/>
+      </svg>
+      <div class="light-cone" id="light-cone"></div>
+    </div>
+
+    <h1 class="hero-title">
+      <span class="line"><span class="word">Agents</span> <span class="word">that</span></span>
+      <span class="line"><span class="word">remember</span></span>
+    </h1>
+
+    <p class="hero-subtitle">A story in four layers</p>
+
+    <div class="scroll-indicator">
+      <span>Scroll to begin</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 1: Determinism -->
+  <section class="chapter light" data-chapter="1">
+    <span class="chapter-number">01</span>
+    <div class="chapter-inner">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer One</p>
+        <h2 class="chapter-title">Determinism</h2>
+        <div class="chapter-description">
+          <p>Every decision leaves a trace. Every trace tells a story. In a world of infinite possibilities, we choose certainty.</p>
+          <p>Code verifies. Scripts return boolean truths. No judgment calls, no ambiguity. Just the quiet confidence of <em>yes</em> or <em>no</em>.</p>
+        </div>
+      </div>
+      <div class="illustration" data-illustration="determinism">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Central hub - organic hand holding truth -->
+          <path class="organic-path" fill="#141413" d="M250 180 Q280 160 310 180 Q340 200 330 240 Q320 280 280 300 Q240 320 200 300 Q160 280 170 240 Q180 200 220 180 Q235 170 250 180 Z"/>
+          <!-- Radiating certainty lines -->
+          <path class="organic-path" fill="#141413" opacity="0.3" d="M250 120 Q260 100 280 110 Q300 120 290 140 Q280 160 260 150 Q240 140 250 120 Z"/>
+          <path class="organic-path" fill="#141413" opacity="0.3" d="M350 200 Q380 190 390 210 Q400 240 380 250 Q360 260 350 240 Q340 220 350 200 Z"/>
+          <path class="organic-path" fill="#141413" opacity="0.3" d="M150 200 Q120 190 110 210 Q100 240 120 250 Q140 260 150 240 Q160 220 150 200 Z"/>
+          <!-- Truth symbol in center -->
+          <path class="organic-path" fill="#FAF9F5" d="M240 220 Q250 210 260 220 L270 250 Q260 260 250 260 Q240 260 230 250 L240 220 Z"/>
+          <!-- Orbiting nodes -->
+          <circle class="organic-path" cx="180" cy="150" r="15" fill="#141413" opacity="0.5"/>
+          <circle class="organic-path" cx="320" cy="150" r="12" fill="#141413" opacity="0.4"/>
+          <circle class="organic-path" cx="180" cy="350" r="10" fill="#141413" opacity="0.3"/>
+          <circle class="organic-path" cx="320" cy="350" r="18" fill="#141413" opacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transition -->
+  <div class="transition-section light">
+    <div class="transition-line"></div>
+  </div>
+
+  <!-- Chapter 2: Orchestration -->
+  <section class="chapter dark" data-chapter="2">
+    <span class="chapter-number">02</span>
+    <div class="chapter-inner reverse">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Two</p>
+        <h2 class="chapter-title">Orchestration</h2>
+        <div class="chapter-description">
+          <p>One conductor. Many instruments. The symphony requires a singular vision, a single thread of consciousness that never breaks.</p>
+          <p>Context flows like water through the session. Skills load on demand. The orchestrator delegates but never forgets.</p>
+        </div>
+      </div>
+      <div class="illustration" data-illustration="orchestration">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Conductor's hands -->
+          <path class="organic-path" fill="#FAF9F5" d="M200 250 Q180 200 220 180 Q260 160 300 180 Q340 200 320 250 Q300 300 260 320 Q220 340 180 300 Q160 280 200 250 Z"/>
+          <!-- Flowing connections -->
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M120 150 Q160 120 200 140 Q180 180 140 190 Q100 200 120 150 Z"/>
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M380 150 Q340 120 300 140 Q320 180 360 190 Q400 200 380 150 Z"/>
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M120 350 Q160 380 200 360 Q180 320 140 310 Q100 300 120 350 Z"/>
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M380 350 Q340 380 300 360 Q320 320 360 310 Q400 300 380 350 Z"/>
+          <!-- Central eye/focus -->
+          <ellipse class="organic-path" cx="250" cy="250" rx="30" ry="20" fill="#141413"/>
+          <circle class="organic-path" cx="250" cy="250" r="8" fill="#FAF9F5"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quote -->
+  <section class="quote-section dark">
+    <blockquote class="quote">
+      <span class="quote-mark">"</span>
+      Skills are not agents. They are knowledge waiting to be summoned.
+    </blockquote>
+  </section>
+
+  <!-- Chapter 3: Enforcement -->
+  <section class="chapter light" data-chapter="3">
+    <span class="chapter-number">03</span>
+    <div class="chapter-inner">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Three</p>
+        <h2 class="chapter-title">Enforcement</h2>
+        <div class="chapter-description">
+          <p>Rules whisper. Hooks scream. The difference between guidance and guardrails is the power to say <em>no</em>.</p>
+          <p>Exit code 2 blocks. Permission denied stops. The gate checks every traveler, lets only the worthy pass.</p>
+        </div>
+      </div>
+      <div class="illustration" data-illustration="enforcement">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Gateway arches -->
+          <path class="organic-path" fill="#141413" d="M100 400 Q150 300 250 280 Q350 300 400 400 L380 400 Q340 320 250 300 Q160 320 120 400 Z"/>
+          <path class="organic-path" fill="#141413" opacity="0.6" d="M130 380 Q170 300 250 285 Q330 300 370 380 L350 380 Q320 320 250 305 Q180 320 150 380 Z"/>
+          <path class="organic-path" fill="#141413" opacity="0.3" d="M160 360 Q190 300 250 290 Q310 300 340 360 L320 360 Q300 320 250 310 Q200 320 180 360 Z"/>
+          <!-- Lock symbol -->
+          <rect class="organic-path" x="225" y="180" width="50" height="40" rx="5" fill="#141413"/>
+          <path class="organic-path" fill="none" stroke="#141413" stroke-width="8" d="M235 180 L235 160 Q235 140 250 140 Q265 140 265 160 L265 180"/>
+          <!-- Blocked elements -->
+          <circle class="organic-path" cx="150" cy="150" r="20" fill="#141413" opacity="0.2"/>
+          <line class="organic-path" x1="140" y1="140" x2="160" y2="160" stroke="#FAF9F5" stroke-width="3"/>
+          <line class="organic-path" x1="160" y1="140" x2="140" y2="160" stroke="#FAF9F5" stroke-width="3"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transition -->
+  <div class="transition-section light">
+    <div class="transition-line"></div>
+  </div>
+
+  <!-- Chapter 4: Learning -->
+  <section class="chapter dark" data-chapter="4">
+    <span class="chapter-number">04</span>
+    <div class="chapter-inner reverse">
+      <div class="chapter-content">
+        <p class="chapter-label">Layer Four</p>
+        <h2 class="chapter-title">Learning</h2>
+        <div class="chapter-description">
+          <p>Memory is not storage. It is understanding distilled. Each trace becomes a teacher for sessions yet to come.</p>
+          <p>Semantic search finds not words, but meaning. Vector embeddings map the territory of past decisions. The graph grows.</p>
+        </div>
+      </div>
+      <div class="illustration" data-illustration="learning">
+        <svg viewBox="0 0 500 500" fill="none">
+          <!-- Growing knowledge tree -->
+          <path class="organic-path" fill="#FAF9F5" d="M250 400 L250 280 Q230 260 210 280 Q190 260 200 230 Q180 220 190 190 Q170 180 200 160 Q220 140 250 150 Q280 140 300 160 Q330 180 310 190 Q320 220 300 230 Q310 260 290 280 Q270 260 250 280 L250 400 Z"/>
+          <!-- Root system -->
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M250 400 Q220 420 200 450 Q180 420 160 440"/>
+          <path class="organic-path" fill="#FAF9F5" opacity="0.4" d="M250 400 Q280 420 300 450 Q320 420 340 440"/>
+          <!-- Knowledge nodes -->
+          <circle class="organic-path" cx="200" cy="160" r="15" fill="#FAF9F5"/>
+          <circle class="organic-path" cx="300" cy="160" r="12" fill="#FAF9F5" opacity="0.8"/>
+          <circle class="organic-path" cx="250" cy="120" r="10" fill="#FAF9F5" opacity="0.6"/>
+          <!-- Connecting wisps -->
+          <path class="organic-path" fill="none" stroke="#FAF9F5" stroke-width="1" opacity="0.3" d="M200 160 Q180 100 250 80 Q320 100 300 160"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final Quote -->
+  <section class="quote-section dark">
+    <blockquote class="quote">
+      <span class="quote-mark">"</span>
+      An agent that learns is an agent that evolves. An agent that evolves becomes something more.
+    </blockquote>
+  </section>
+
+  <!-- Finale -->
+  <section class="finale dark">
+    <div class="finale-illustration">
+      <svg viewBox="0 0 400 400" fill="none">
+        <!-- Combined symbol - all four layers unified -->
+        <path class="organic-path" fill="#FAF9F5" d="M200 50 Q280 80 320 150 Q360 220 320 290 Q280 360 200 380 Q120 360 80 290 Q40 220 80 150 Q120 80 200 50 Z"/>
+        <path class="organic-path" fill="#141413" d="M200 80 Q260 100 290 160 Q320 220 290 280 Q260 340 200 355 Q140 340 110 280 Q80 220 110 160 Q140 100 200 80 Z"/>
+        <!-- Inner layers -->
+        <path class="organic-path" fill="#FAF9F5" opacity="0.8" d="M200 120 Q240 135 260 175 Q280 215 260 255 Q240 295 200 305 Q160 295 140 255 Q120 215 140 175 Q160 135 200 120 Z"/>
+        <path class="organic-path" fill="#141413" d="M200 150 Q225 160 240 185 Q255 210 240 235 Q225 260 200 268 Q175 260 160 235 Q145 210 160 185 Q175 160 200 150 Z"/>
+        <!-- Core -->
+        <circle class="organic-path" cx="200" cy="200" r="25" fill="#FAF9F5"/>
+        <circle class="organic-path" cx="200" cy="200" r="10" fill="#141413"/>
+      </svg>
+    </div>
+    <h2 class="finale-title">The Harness Complete</h2>
+    <p class="finale-text">
+      Four layers. One system. Agents that verify, orchestrate, enforce, and learn.
+      This is not just architecture. This is evolution.
+    </p>
+  </section>
+
+  <script>
+    // Custom Cursor
+    const cursor = document.querySelector('.cursor');
+    const cursorDot = document.querySelector('.cursor-dot');
+    let mouseX = 0, mouseY = 0;
+    let cursorX = 0, cursorY = 0;
+    let dotX = 0, dotY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    function animateCursor() {
+      // Smooth follow for outer cursor
+      cursorX += (mouseX - cursorX) * 0.15;
+      cursorY += (mouseY - cursorY) * 0.15;
+      cursor.style.left = cursorX - 10 + 'px';
+      cursor.style.top = cursorY - 10 + 'px';
+
+      // Faster follow for dot
+      dotX += (mouseX - dotX) * 0.4;
+      dotY += (mouseY - dotY) * 0.4;
+      cursorDot.style.left = dotX - 2 + 'px';
+      cursorDot.style.top = dotY - 2 + 'px';
+
+      // Update spotlight
+      const spotlight = document.getElementById('spotlight-circle');
+      spotlight.setAttribute('cx', mouseX);
+      spotlight.setAttribute('cy', mouseY);
+
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // Hover effects
+    document.querySelectorAll('a, button, .chapter-title').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hovering'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hovering'));
+    });
+
+    // Hero Animation
+    window.addEventListener('load', () => {
+      // Reveal title words
+      const words = document.querySelectorAll('.hero-title .word');
+      words.forEach((word, i) => {
+        setTimeout(() => word.classList.add('revealed'), 300 + i * 150);
+      });
+
+      // Show subtitle
+      setTimeout(() => {
+        document.querySelector('.hero-subtitle').classList.add('visible');
+      }, 800);
+
+      // Show light cone
+      setTimeout(() => {
+        document.getElementById('light-cone').classList.add('visible');
+      }, 1200);
+    });
+
+    // Scroll Animations
+    const observerOptions = {
+      threshold: 0.2,
+      rootMargin: '0px 0px -100px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    // Observe elements
+    document.querySelectorAll('.chapter-content, .illustration, .quote, .transition-line, .finale-illustration, .finale-title, .finale-text').forEach(el => {
+      observer.observe(el);
+    });
+
+    // Spotlight layer activation on dark sections
+    const spotlightLayer = document.querySelector('.spotlight-layer');
+    const darkSections = document.querySelectorAll('.chapter.dark, .quote-section.dark, .finale.dark');
+
+    const spotlightObserver = new IntersectionObserver((entries) => {
+      let anyDarkVisible = false;
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+          anyDarkVisible = true;
+        }
+      });
+      spotlightLayer.classList.toggle('active', anyDarkVisible);
+    }, { threshold: [0, 0.3, 0.6, 1] });
+
+    darkSections.forEach(section => spotlightObserver.observe(section));
+
+    // Parallax effect on illustrations
+    document.addEventListener('scroll', () => {
+      const scrolled = window.pageYOffset;
+      document.querySelectorAll('.illustration').forEach(ill => {
+        const rect = ill.getBoundingClientRect();
+        const speed = 0.05;
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          const yPos = (rect.top - window.innerHeight / 2) * speed;
+          ill.style.transform = `translateY(${yPos}px) scale(${ill.classList.contains('visible') ? 1 : 0.9})`;
+        }
+      });
+    });
+
+    // Hide cursor on touch devices
+    if ('ontouchstart' in window) {
+      cursor.style.display = 'none';
+      cursorDot.style.display = 'none';
+      document.body.style.cursor = 'auto';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Harness - Interactive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --cream: #faf9f5;
+      --tan: #e8e6dc;
+      --soft-orange: #d97757;
+      --muted-orange: #c9a87e;
+      --warm-gray: #b0aea5;
+      --dark: #141413;
+      --darker: #0a0a09;
+    }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background-color: var(--dark);
+      color: var(--cream);
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3 { font-family: 'Poppins', Arial, sans-serif; }
+
+    /* Progress Bar */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--muted-orange), var(--soft-orange));
+      transition: width 0.3s ease;
+      z-index: 1000;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 80px 32px;
+    }
+
+    .spotlight-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .lamp-container {
+      position: absolute;
+      top: 8%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      width: 280px;
+      height: 280px;
+    }
+
+    .lamp-container svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 30px rgba(217, 119, 87, 0.3));
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      max-width: 900px;
+    }
+
+    .hero-title {
+      font-size: clamp(48px, 10vw, 120px);
+      font-weight: 700;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--warm-gray);
+      transition: color 0.3s ease;
+    }
+
+    .hero-title .highlight {
+      color: var(--cream);
+      text-shadow: 0 0 40px rgba(217, 119, 87, 0.3);
+    }
+
+    .hero-subtitle {
+      font-size: clamp(18px, 3vw, 28px);
+      color: var(--warm-gray);
+      margin-bottom: 40px;
+      transition: color 0.3s ease;
+    }
+
+    .hero-subtitle .highlight {
+      color: var(--cream);
+    }
+
+    .tags {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .tag {
+      padding: 10px 18px;
+      background: rgba(232, 230, 220, 0.1);
+      color: var(--warm-gray);
+      border-radius: 24px;
+      font-size: 13px;
+      font-family: 'Poppins', sans-serif;
+      border: 1px solid rgba(232, 230, 220, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .tag.highlight {
+      background: rgba(217, 119, 87, 0.2);
+      border-color: rgba(217, 119, 87, 0.4);
+      color: var(--cream);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(217, 119, 87, 0.2);
+    }
+
+    .ambient-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(217, 119, 87, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 1;
+    }
+
+    /* Layer Sections */
+    .layer-section {
+      min-height: 100vh;
+      padding: 100px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .layer-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 30% 50%, rgba(217, 119, 87, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .layer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .layer-content.reverse {
+      direction: rtl;
+    }
+    .layer-content.reverse > * {
+      direction: ltr;
+    }
+
+    .layer-text {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .layer-text.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .layer-label {
+      font-family: 'Poppins', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      display: block;
+      opacity: 0.8;
+    }
+
+    .layer-content h2 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 700;
+      margin-bottom: 24px;
+      line-height: 1.1;
+    }
+
+    .layer-content p {
+      font-size: 17px;
+      line-height: 1.8;
+      margin-bottom: 24px;
+      color: var(--warm-gray);
+    }
+
+    .layer-content ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .layer-content li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+    }
+
+    .bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Enhanced SVG Art Containers */
+    .art-container {
+      position: relative;
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 4/3;
+    }
+
+    .art-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Floating animation for SVG elements */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-15px); }
+    }
+
+    @keyframes float-delayed {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.05); }
+    }
+
+    @keyframes rotate-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes orbit {
+      from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
+    }
+
+    /* Footer */
+    footer {
+      padding: 64px 32px;
+      text-align: center;
+      border-top: 1px solid rgba(232, 230, 220, 0.1);
+    }
+
+    footer p {
+      font-size: 14px;
+      color: var(--warm-gray);
+    }
+
+    footer p:first-child {
+      font-family: 'Poppins', sans-serif;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .layer-content {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+      .layer-content.reverse {
+        direction: ltr;
+      }
+      .lamp-container {
+        width: 200px;
+        height: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar" style="width: 0%"></div>
+
+  <!-- Hero Section -->
+  <section class="hero-section" id="hero">
+    <div class="lamp-container">
+      <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="spotlight">
+            <stop offset="0%" stop-color="#d97757" stop-opacity="0.4"/>
+            <stop offset="40%" stop-color="#d97757" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#d97757" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="lampGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <g class="lamp-base" filter="url(#lampGlow)">
+          <path d="M120 80 L180 80 L200 140 L100 140 Z" fill="none" stroke="#d97757" stroke-width="2" opacity="0.8"/>
+          <ellipse cx="150" cy="140" rx="50" ry="15" fill="#d97757" opacity="0.3"/>
+          <circle cx="150" cy="120" r="15" fill="#d97757" opacity="0.6"/>
+          <line x1="150" y1="80" x2="150" y2="40" stroke="#d97757" stroke-width="2" opacity="0.6"/>
+          <ellipse cx="150" cy="40" rx="20" ry="5" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.5"/>
+        </g>
+
+        <ellipse class="spotlight-beam" cx="150" cy="200" rx="80" ry="30" fill="url(#spotlight)"/>
+      </svg>
+    </div>
+
+    <div class="ambient-glow" id="ambientGlow"></div>
+
+    <svg class="spotlight-overlay" id="spotlightOverlay">
+      <defs>
+        <mask id="spotlightMask">
+          <rect width="100%" height="100%" fill="black"/>
+          <circle id="spotlightCircle" cx="50%" cy="50%" r="100" fill="white"/>
+        </mask>
+        <radialGradient id="textGlow">
+          <stop offset="0%" stop-color="#d97757" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#d97757" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#textGlow)" mask="url(#spotlightMask)" opacity="0.5"/>
+    </svg>
+
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="title-word" data-word="Agent">Agent</span>
+        <span class="title-word" data-word="Harness">Harness</span>
+      </h1>
+      <p class="hero-subtitle">
+        <span class="subtitle-word" data-word="Building">Building</span>
+        <span class="subtitle-word" data-word="deterministic">deterministic,</span>
+        <span class="subtitle-word" data-word="token-efficient">token-efficient</span>
+        <span class="subtitle-word" data-word="AI">AI</span>
+        <span class="subtitle-word" data-word="agents">agents</span>
+      </p>
+      <div class="tags">
+        <span class="tag" data-tag="single">Single Orchestrator</span>
+        <span class="tag" data-tag="skills">Skills Library</span>
+        <span class="tag" data-tag="code">Code Verification</span>
+        <span class="tag" data-tag="hooks">Hooks Enforcement</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Determinism Layer -->
+  <section class="layer-section" id="determinism">
+    <div class="layer-content">
+      <div class="layer-text">
+        <span class="layer-label" style="color: var(--soft-orange);">LAYER 01</span>
+        <h2 style="color: var(--cream);">Determinism</h2>
+        <p>Every action is verifiable, every outcome is reproducible. No randomness, no ambiguity—just code that does exactly what you specify.</p>
+        <ul>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>Versioned prompts with SHA256 validation</li>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>Exit codes instead of LLM judgment</li>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>Reproducible agent behavior</li>
+        </ul>
+      </div>
+      <div class="art-container">
+        <svg viewBox="0 0 400 300">
+          <defs>
+            <radialGradient id="detGlow">
+              <stop offset="0%" stop-color="#d97757" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#d97757" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Background glow -->
+          <ellipse cx="200" cy="150" rx="160" ry="120" fill="url(#detGlow)">
+            <animate attributeName="rx" values="160;170;160" dur="4s" repeatCount="indefinite"/>
+          </ellipse>
+
+          <!-- Main hub -->
+          <circle cx="200" cy="150" r="40" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.3">
+            <animate attributeName="r" values="40;45;40" dur="3s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="200" cy="150" r="12" fill="#d97757" opacity="0.7"/>
+
+          <!-- Orbiting nodes -->
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite"/>
+            <circle cx="280" cy="150" r="8" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="280" cy="150" r="3" fill="#d97757" opacity="0.7"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="15s" repeatCount="indefinite"/>
+            <circle cx="200" cy="70" r="10" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.4"/>
+            <circle cx="200" cy="70" r="4" fill="#d97757" opacity="0.7"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="18s" repeatCount="indefinite"/>
+            <circle cx="120" cy="150" r="8" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="120" cy="150" r="3" fill="#d97757" opacity="0.7"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="12s" repeatCount="indefinite"/>
+            <circle cx="200" cy="230" r="10" fill="none" stroke="#d97757" stroke-width="1.5" opacity="0.4"/>
+            <circle cx="200" cy="230" r="4" fill="#d97757" opacity="0.7"/>
+          </g>
+
+          <!-- Connection lines -->
+          <g opacity="0.2">
+            <line x1="200" y1="150" x2="280" y2="150" stroke="#d97757" stroke-width="1">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite"/>
+            </line>
+            <line x1="200" y1="150" x2="200" y2="70" stroke="#d97757" stroke-width="1">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="15s" repeatCount="indefinite"/>
+            </line>
+            <line x1="200" y1="150" x2="120" y2="150" stroke="#d97757" stroke-width="1">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="18s" repeatCount="indefinite"/>
+            </line>
+            <line x1="200" y1="150" x2="200" y2="230" stroke="#d97757" stroke-width="1">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="12s" repeatCount="indefinite"/>
+            </line>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Orchestration Layer -->
+  <section class="layer-section" style="background: linear-gradient(180deg, var(--dark) 0%, var(--darker) 100%);">
+    <div class="layer-content reverse">
+      <div class="art-container">
+        <svg viewBox="0 0 400 300">
+          <defs>
+            <radialGradient id="orchGlow">
+              <stop offset="0%" stop-color="#6a9bcc" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#6a9bcc" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Ambient glow -->
+          <ellipse cx="200" cy="150" rx="170" ry="130" fill="url(#orchGlow)">
+            <animate attributeName="rx" values="170;180;170" dur="5s" repeatCount="indefinite"/>
+          </ellipse>
+
+          <!-- Central orchestrator -->
+          <circle cx="200" cy="150" r="35" fill="#6a9bcc" opacity="0.15">
+            <animate attributeName="r" values="35;40;35" dur="4s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="200" cy="150" r="18" fill="#6a9bcc" opacity="0.7"/>
+
+          <!-- Orbit ring -->
+          <circle cx="200" cy="150" r="70" fill="none" stroke="#6a9bcc" stroke-width="0.5" opacity="0.3">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="30s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Satellite nodes -->
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="10s" repeatCount="indefinite"/>
+            <circle cx="200" cy="80" r="12" fill="none" stroke="#6a9bcc" stroke-width="1.5" opacity="0.6"/>
+            <circle cx="200" cy="80" r="5" fill="#6a9bcc"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="120 200 150" to="480 200 150" dur="10s" repeatCount="indefinite"/>
+            <circle cx="260" cy="110" r="10" fill="none" stroke="#6a9bcc" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="260" cy="110" r="4" fill="#6a9bcc"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="240 200 150" to="600 200 150" dur="10s" repeatCount="indefinite"/>
+            <circle cx="260" cy="190" r="10" fill="none" stroke="#6a9bcc" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="260" cy="190" r="4" fill="#6a9bcc"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="60 200 150" to="420 200 150" dur="10s" repeatCount="indefinite"/>
+            <circle cx="140" cy="110" r="10" fill="none" stroke="#6a9bcc" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="140" cy="110" r="4" fill="#6a9bcc"/>
+          </g>
+
+          <g>
+            <animateTransform attributeName="transform" type="rotate" from="180 200 150" to="540 200 150" dur="10s" repeatCount="indefinite"/>
+            <circle cx="140" cy="190" r="10" fill="none" stroke="#6a9bcc" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="140" cy="190" r="4" fill="#6a9bcc"/>
+          </g>
+
+          <!-- Connection pulses -->
+          <circle cx="0" cy="0" r="3" fill="#6a9bcc" opacity="0">
+            <animateMotion dur="2s" repeatCount="indefinite" path="M200,150 L200,80"/>
+            <animate attributeName="opacity" values="0;0.8;0" dur="2s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
+      <div class="layer-text">
+        <span class="layer-label" style="color: #6a9bcc;">LAYER 02</span>
+        <h2 style="color: var(--cream);">Orchestration</h2>
+        <p style="color: var(--warm-gray);">A single orchestrator maintains full context. Progressive disclosure, intelligent state management—no subagent chaos.</p>
+        <ul>
+          <li><span class="bullet" style="background-color: #6a9bcc;"></span>START → INIT → IMPLEMENT → TEST</li>
+          <li><span class="bullet" style="background-color: #6a9bcc;"></span>Context compression at 80%</li>
+          <li><span class="bullet" style="background-color: #6a9bcc;"></span>98.7% token savings</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Enforcement Layer -->
+  <section class="layer-section" id="enforcement">
+    <div class="layer-content">
+      <div class="layer-text">
+        <span class="layer-label" style="color: var(--soft-green);">LAYER 03</span>
+        <h2 style="color: var(--cream);">Enforcement</h2>
+        <p>Hooks block invalid actions. Rules guide, hooks enforce—external validation guarantees quality at every boundary.</p>
+        <ul>
+          <li><span class="bullet" style="background-color: var(--soft-green);"></span>Exit code 2 blocks</li>
+          <li><span class="bullet" style="background-color: var(--soft-green);"></span>tested:true gates</li>
+          <li><span class="bullet" style="background-color: var(--soft-green);"></span>Pre-commit validation</li>
+        </ul>
+      </div>
+      <div class="art-container">
+        <svg viewBox="0 0 400 300">
+          <defs>
+            <linearGradient id="enfGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#788c5d" stop-opacity="0.1"/>
+              <stop offset="50%" stop-color="#788c5d" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#788c5d" stop-opacity="0.1"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Background flow -->
+          <rect x="50" y="20" width="300" height="260" rx="20" fill="url(#enfGrad)"/>
+
+          <!-- Gateway arches - flowing from top to bottom -->
+          <g opacity="0.6">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-5;0,0" dur="3s" repeatCount="indefinite"/>
+            <path d="M100 40 Q100 60 130 70 L130 70" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="100" cy="40" r="6" fill="#788c5d"/>
+            <path d="M100 70 L100 90" stroke="#788c5d" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+          </g>
+
+          <g opacity="0.7">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="3.5s" repeatCount="indefinite"/>
+            <path d="M200 40 Q200 65 165 75 L165 75" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="200" cy="40" r="7" fill="#788c5d"/>
+            <path d="M200 75 L200 100" stroke="#788c5d" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+          </g>
+
+          <g opacity="0.6">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-4;0,0" dur="4s" repeatCount="indefinite"/>
+            <path d="M300 40 Q300 60 270 70 L270 70" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="300" cy="40" r="6" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <path d="M300 70 L300 95" stroke="#788c5d" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+          </g>
+
+          <g opacity="0.8">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="3.2s" repeatCount="indefinite"/>
+            <path d="M150 110 Q150 135 185 145 L185 145" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="150" cy="110" r="7" fill="#788c5d"/>
+            <path d="M150 145 L150 170" stroke="#788c5d" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+          </g>
+
+          <g opacity="0.7">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3.5;0,0" dur="3.8s" repeatCount="indefinite"/>
+            <path d="M250 110 Q250 140 215 150 L215 150" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="250" cy="110" r="6" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <path d="M250 150 L250 180" stroke="#788c5d" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+          </g>
+
+          <g opacity="0.9">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-2.5;0,0" dur="4.2s" repeatCount="indefinite"/>
+            <path d="M100 190 Q100 215 135 225 L135 225" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="100" cy="190" r="8" fill="#788c5d"/>
+          </g>
+
+          <g opacity="0.8">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="3.6s" repeatCount="indefinite"/>
+            <path d="M200 190 Q200 220 165 230 L165 230" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="200" cy="190" r="7" fill="none" stroke="#788c5d" stroke-width="2"/>
+          </g>
+
+          <g opacity="0.7">
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4.5s" repeatCount="indefinite"/>
+            <path d="M300 190 Q300 215 265 225 L265 225" fill="none" stroke="#788c5d" stroke-width="2"/>
+            <circle cx="300" cy="190" r="8" fill="#788c5d"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Learning Layer -->
+  <section class="layer-section" style="background: linear-gradient(180deg, var(--darker) 0%, var(--dark) 100%);">
+    <div class="layer-content reverse">
+      <div class="art-container">
+        <svg viewBox="0 0 400 300">
+          <defs>
+            <radialGradient id="learnGlow">
+              <stop offset="0%" stop-color="#d97757" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#d97757" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Growing pattern -->
+          <ellipse cx="200" cy="150" rx="150" ry="120" fill="url(#learnGlow)">
+            <animate attributeName="rx" values="150;160;150" dur="6s" repeatCount="indefinite"/>
+          </ellipse>
+
+          <!-- Core knowledge -->
+          <circle cx="200" cy="150" r="20" fill="#d97757" opacity="0.8">
+            <animate attributeName="r" values="20;22;20" dur="2s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Expanding rings of knowledge -->
+          <circle cx="200" cy="150" r="40" fill="none" stroke="#d97757" stroke-width="0.5" opacity="0.3">
+            <animate attributeName="r" values="40;100;40" dur="4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" repeatCount="indefinite"/>
+          </circle>
+
+          <circle cx="200" cy="150" r="50" fill="none" stroke="#d97757" stroke-width="0.5" opacity="0.2">
+            <animate attributeName="r" values="50;110;50" dur="5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.2;0;0.2" dur="5s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Knowledge nodes that grow outward -->
+          <g opacity="0.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="25s" repeatCount="indefinite"/>
+            <circle cx="280" cy="150" r="8" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="280" cy="150" r="3" fill="#d97757"/>
+          </g>
+
+          <g opacity="0.6">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite"/>
+            <circle cx="200" cy="50" r="10" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="200" cy="50" r="4" fill="#d97757"/>
+          </g>
+
+          <g opacity="0.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="22s" repeatCount="indefinite"/>
+            <circle cx="120" cy="150" r="8" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="120" cy="150" r="3" fill="#d97757"/>
+          </g>
+
+          <g opacity="0.6">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="18s" repeatCount="indefinite"/>
+            <circle cx="200" cy="250" r="10" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="200" cy="250" r="4" fill="#d97757"/>
+          </g>
+
+          <g opacity="0.4">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="30s" repeatCount="indefinite"/>
+            <circle cx="295" cy="100" r="6" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="295" cy="100" r="2" fill="#d97757"/>
+          </g>
+
+          <g opacity="0.4">
+            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="28s" repeatCount="indefinite"/>
+            <circle cx="105" cy="200" r="7" fill="none" stroke="#d97757" stroke-width="1.5"/>
+            <circle cx="105" cy="200" r="2.5" fill="#d97757"/>
+          </g>
+
+          <!-- Neural connection lines -->
+          <g opacity="0.15">
+            <line x1="200" y1="150" x2="280" y2="150" stroke="#d97757" stroke-width="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="25s" repeatCount="indefinite"/>
+            </line>
+            <line x1="200" y1="150" x2="200" y2="50" stroke="#d97757" stroke-width="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite"/>
+            </line>
+          </g>
+        </svg>
+      </div>
+      <div class="layer-text">
+        <span class="layer-label" style="color: var(--soft-orange);">LAYER 04</span>
+        <h2 style="color: var(--cream);">Learning</h2>
+        <p style="color: var(--warm-gray);">Context Graph stores decision traces with semantic embeddings. Learn from precedents, build institutional memory.</p>
+        <ul>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>Voyage AI embeddings</li>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>ChromaDB storage</li>
+          <li><span class="bullet" style="background-color: var(--soft-orange);"></span>Pattern extraction</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>AGENT HARNESS</p>
+    <p>Research repository for deterministic AI agents</p>
+  </footer>
+
+  <script>
+    // Mouse tracking for spotlight effect
+    const heroSection = document.getElementById('hero');
+    const spotlightOverlay = document.getElementById('spotlightOverlay');
+    const spotlightCircle = document.getElementById('spotlightCircle');
+    const ambientGlow = document.getElementById('ambientGlow');
+    const titleWords = document.querySelectorAll('.title-word');
+    const subtitleWords = document.querySelectorAll('.subtitle-word');
+    const tags = document.querySelectorAll('.tag');
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let currentX = mouseX;
+    let currentY = mouseY;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    function animate() {
+      currentX += (mouseX - currentX) * 0.08;
+      currentY += (mouseY - currentY) * 0.08;
+
+      const rect = heroSection.getBoundingClientRect();
+      const relX = currentX - rect.left;
+      const relY = currentY - rect.top;
+
+      spotlightCircle.setAttribute('cx', relX);
+      spotlightCircle.setAttribute('cy', relY);
+      spotlightCircle.setAttribute('r', '120');
+
+      ambientGlow.style.left = (currentX - 300) + 'px';
+      ambientGlow.style.top = (currentY - 300) + 'px';
+
+      highlightElements(titleWords, relX, relY, 150);
+      highlightElements(subtitleWords, relX, relY, 100);
+      highlightElements(tags, relX, relY, 80);
+
+      requestAnimationFrame(animate);
+    }
+
+    function highlightElements(elements, spotlightX, spotlightY, radius) {
+      elements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const heroRect = heroSection.getBoundingClientRect();
+        const elCenterX = rect.left + rect.width / 2 - heroRect.left;
+        const elCenterY = rect.top + rect.height / 2 - heroRect.top;
+
+        const distance = Math.sqrt(
+          Math.pow(spotlightX - elCenterX, 2) +
+          Math.pow(spotlightY - elCenterY, 2)
+        );
+
+        if (distance < radius) {
+          el.classList.add('highlight');
+        } else {
+          el.classList.remove('highlight');
+        }
+      });
+    }
+
+    animate();
+
+    // Scroll animations for layer sections
+    const layerTexts = document.querySelectorAll('.layer-text');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.3 });
+
+    layerTexts.forEach(text => observer.observe(text));
+
+    // Progress bar
+    const sections = document.querySelectorAll('section');
+    const progressBar = document.getElementById('progress-bar');
+
+    window.addEventListener('scroll', () => {
+      const scrollPos = window.scrollY + window.innerHeight / 2;
+      const totalHeight = document.body.scrollHeight - window.innerHeight;
+      const progress = (window.scrollY / totalHeight) * 100;
+      progressBar.style.width = Math.min(progress, 100) + '%';
+    });
+  </script>
+</body>
+</html>
