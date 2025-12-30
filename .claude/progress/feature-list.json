@@ -1,0 +1,17 @@
+{
+  "current_feature": {
+    "id": "feat-weave-integration",
+    "title": "Integrate Weave into context-graph MCP",
+    "status": "pending",
+    "priority": "medium",
+    "description": "Add Weave tracing to context-graph MCP server for enhanced decision trace observability"
+  },
+  "completed": [],
+  "pending": [
+    {
+      "id": "feat-weave-integration",
+      "title": "Integrate Weave into context-graph MCP",
+      "priority": "medium"
+    }
+  ]
+}
