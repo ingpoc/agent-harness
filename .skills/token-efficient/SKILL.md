@@ -1,6 +1,6 @@
 ---
 name: token-efficient
-description: "Use when processing >50 items, analyzing CSV/log files, executing code in sandbox, or searching for tools. Load for data processing tasks. Achieves 98%+ token savings via in-sandbox execution, progressive disclosure, and pagination. Supports heredocs for multi-line bash."
+description: "Use when processing 50+ items, analyzing CSV/log files, executing code in sandbox, or searching for tools. Load for data processing tasks. Achieves 98%+ token savings via in-sandbox execution, progressive disclosure, and pagination. Supports heredocs for multi-line bash."
 keywords: csv, logs, execute, sandbox, pagination, batch, filter, aggregate
 ---
 

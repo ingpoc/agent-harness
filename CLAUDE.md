@@ -19,13 +19,6 @@ Agent Harness - Research repository for building deterministic, token-efficient 
 | **REFERENCE.md** | External research links | New sources found |
 | **SUMMARY.md** | Session summaries (deprecated - use /summary skill) | - (legacy) |
 
-## Key Architectural Principles
-
-1. **Single Orchestrator** - One agent maintains full context (no subagent spawning)
-2. **Skills > Agents** - Domain knowledge in `.skills/` (progressive disclosure)
-3. **Code > Judgment** - Verification via scripts, not LLM opinion
-4. **Hooks > Rules** - External enforcement blocks invalid actions
-
 ## Skills Library (.skills/)
 
 Each skill follows official Anthropic pattern:

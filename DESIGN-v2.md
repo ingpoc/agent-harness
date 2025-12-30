@@ -67,6 +67,32 @@
 
 ---
 
+## Documentation Hierarchy
+
+Clear separation ensures reliable agent behavior without redundancy.
+
+| File | Scope | Purpose | Maintained By |
+|------|-------|---------|---------------|
+| `~/.claude/prompts/orchestrator.md` | Global | Agent identity, state machine, core principles | You (once) |
+| `~/.claude/CLAUDE.md` | Global | Your habits (token patterns, delegation, workflow) | You (once) |
+| `CLAUDE.md` | Project | Project architecture, file structure, conventions | Per project |
+| `.claude/CLAUDE.md` | Project | Quick reference (commands, state mapping only) | `init-project.sh` |
+
+**Key principle**: Architectural principles live in `orchestrator.md` (identity), not in project `CLAUDE.md` (reality). The `.claude/CLAUDE.md` is a minimal quick-reference that points to `orchestrator.md` for full details.
+
+**Layered inheritance**:
+```
+orchestrator.md (WHO I AM)
+    ↓
+~/.claude/CLAUDE.md (MY HABITS)
+    ↓
+CLAUDE.md (THIS PROJECT'S STRUCTURE)
+    ↓
+.claude/CLAUDE.md (QUICK REFERENCE)
+```
+
+---
+
 ## Layer 0: Determinism
 
 ### Sources of Non-Determinism (to eliminate)
@@ -500,6 +526,8 @@ sys.exit(0)
 │   ├── feature-breakdown.md     # Loaded on-demand
 │   ├── project-detection.md     # Loaded on-demand
 │   └── templates/               # Reference files
+│       ├── CLAUDE.md            # Quick reference template (minimal)
+│       └── feature-list.json    # Feature list template
 │
 ├── implementation/              # IMPLEMENT state
 │   ├── SKILL.md                 # ~200 tokens
@@ -856,3 +884,12 @@ def create_skill_update(traces):
 - Hooks read from .claude/config/project.json for project-specific settings
 - Integrated hook setup into initializer skill workflow
 - All hooks follow Claude Code best practices (exit code 2 for blocking)
+
+*2025-12-30 - Documentation Separation (proper separation of concerns):*
+
+- Added Documentation Hierarchy section explaining file purposes
+- Clarified: orchestrator.md (identity) vs CLAUDE.md (project) vs .claude/CLAUDE.md (quick reference)
+- Removed redundant architectural principles from project CLAUDE.md
+- Simplified .claude/CLAUDE.md to minimal quick reference (commands, state mapping)
+- Updated init-project.sh to generate streamlined .claude/CLAUDE.md
+- Key principle: Architectural principles live in orchestrator.md, not duplicated in project docs
