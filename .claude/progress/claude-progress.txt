@@ -1,0 +1,19 @@
+# Claude Progress - Agent Harness
+
+Last Updated: 2025-12-29 12:41:55
+
+## Recent Session Summary
+
+Created immersive scroll-based experience showcasing Agent Skills benefits using GSAP + ScrollTrigger. Built agents-benefits-gsap.html with Ocean palette featuring 4 benefit chapters with SVG animations. Updated scroll-storyteller skill with animation preference workflow (GSAP vs CSS-only).
+
+## Completed Work
+
+- agents-benefits-gsap.html - Full GSAP scroll experience with 4 chapters
+- scroll-storyteller skill update - Added AskUserQuestion animation preference workflow
+- Fixed GSAP animation visibility issues (gsap.set + gsap.to pattern)
+
+## Next Steps
+
+- Create experiences with other duotone palettes
+- Add more agent benefit content sections
+- Generate CSS-only version for comparison

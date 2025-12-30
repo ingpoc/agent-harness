@@ -291,13 +291,44 @@ Resume sessions efficiently by combining fresh context with checkpoint summaries
 
 ### Enforcement Hooks
 
+**Global Hooks** (7 hooks - project-agnostic, in `~/.claude/hooks/`):
+
 | Hook | Event | Verification | Blocks If |
 |------|-------|--------------|-----------|
-| `verify-tests.py` | PreToolUse (Write feature-list) | Run pytest, check exit code | Tests fail |
-| `verify-files-exist.py` | PreToolUse (mark completed) | Check implementation files exist | Missing files |
-| `verify-no-skip.py` | PreToolUse (state transition) | Check valid transition | Invalid transition |
-| `verify-health.py` | PreToolUse (mark tested) | curl health endpoint | Server not running |
+| `verify-state-transition.py` | PreToolUse (Write state.json) | Valid transitions only | Invalid state change |
 | `require-commit-before-tested.py` | PreToolUse (Write feature-list) | `git status --porcelain` | Uncommitted changes |
+| `require-outcome-update.py` | PreToolUse (Write feature-list) | Trace outcomes updated | Outcome still pending |
+
+**Project Hooks** (5 hooks - project-specific, read from `.claude/config/project.json`):
+
+| Hook | Event | Verification | Blocks If |
+|------|-------|--------------|-----------|
+| `verify-tests.py` | PreToolUse (Write feature-list) | Run test_command | Tests fail |
+| `verify-files-exist.py` | PreToolUse (mark completed) | Implementation files exist | Files missing |
+| `verify-health.py` | PreToolUse (mark tested) | Health check command | Server not running |
+| `require-dependencies.py` | PreToolUse (Write to src/) | Env vars, services present | Deps missing |
+| `session-entry.sh` | SessionStart | 3-phase protocol | N/A (info only) |
+
+**Utility Scripts** (2 scripts):
+
+| Script | Purpose | When |
+|--------|---------|------|
+| `feature-commit.sh` | Commit with `[feat-id]` format | After implementation |
+| `session-end.sh` | Checkpoint commit | Session end |
+
+**Auto-Linking** (1 hook):
+
+| Hook | Event | Purpose | Blocks? |
+|------|-------|---------|--------|
+| `link-feature-to-trace.py` | Feature created | Auto-link to trace | No |
+
+**Reminders** (1 hook):
+
+| Hook | Event | Purpose | Blocks? |
+|------|-------|---------|--------|
+| `remind-decision-trace.sh` | Implementation | Log decision trace | No (reminder) |
+
+**Total: 12 hooks + 2 scripts**
 
 ### Git Integration
 
@@ -329,12 +360,48 @@ From Anthropic Effective Harnesses: *"init.sh script for development server star
 ```json
 {
   "project_type": "fastapi",
-  "init_script": "./scripts/init.sh",
   "dev_server_port": 8000,
   "health_check": "curl -sf http://localhost:8000/health",
+  "test_command": "pytest",
   "required_env": ["DATABASE_URL", "API_KEY"],
   "required_services": ["redis://localhost:6379"]
 }
+```
+
+### Hook Setup Skills
+
+Two skills manage hook installation:
+
+| Skill | Location | Purpose | Run Frequency |
+|------|----------|---------|--------------|
+| `global-hook-setup` | `.skills/global-hook-setup/` | Install 7 global hooks | Once per machine |
+| `project-hook-setup` | `.skills/project-hook-setup/` | Install 5 project hooks | Once per project |
+
+**Setup Workflow:**
+```
+INIT state → initializer skill
+                ↓
+    Check: ~/.claude/hooks/ exists?
+                ↓ NO
+    Load global-hook-setup skill
+                ↓
+    Check: .claude/hooks/ exists?
+                ↓ NO
+    Load project-hook-setup skill
+```
+
+**Skills Structure:**
+```
+.skills/
+├── global-hook-setup/
+│   ├── SKILL.md
+│   ├── scripts/ (setup, verify, install)
+│   └── templates/ (7 hook templates)
+└── project-hook-setup/
+    ├── SKILL.md
+    ├── scripts/ (setup, config, verify, install)
+    ├── templates/ (5 hook templates)
+    └── assets/ (project config template)
 ```
 
 **Flow:**
@@ -657,17 +724,17 @@ def create_skill_update(traces):
 
 | Priority | Component | Effort | Impact | Status |
 |----------|-----------|--------|--------|--------|
-| **P0** | Single orchestrator prompt | Low | Foundation | Ready |
-| **P0** | State machine enforcement hooks | Low | Determinism | Ready |
+| **P0** | Single orchestrator prompt | Low | Foundation | ✅ Done |
+| **P0** | State machine enforcement hooks | Low | Determinism | ✅ Done |
 | **P0** | Skills library structure | Low | Token efficiency | ✅ Done |
 | **P0** | Progressive compression checkpoints | Low | 30% token savings | ✅ Added |
 | **P0** | MVP-first feature breakdown | Low | 90% time savings | ✅ Added |
 | **P1** | Session resumption pattern | Medium | 50% token savings | ✅ Added |
 | **P1** | Async parallel operations | Medium | 30-50% time savings | ✅ Added |
 | **P1** | Sandbox fast-path | Low | 2-3x speedup | ✅ Added |
-| **P1** | Verification scripts (pytest, curl) | Medium | Code > Judgment | |
+| **P1** | Verification scripts (12 hooks + 2 scripts) | Medium | Code > Judgment | ✅ Done |
 | **P1** | Tool defer_loading config | - | 85% tool token savings | ⏳ API feature (see [#12836](https://github.com/anthropics/claude-code/issues/12836)) |
-| **P2** | Trace logging | Medium | Learning foundation | |
+| **P2** | Trace logging | Medium | Learning foundation | ✅ Done (context-graph MCP) |
 | **P2** | Pattern detection | Medium | Auto-improvement | |
 | **P3** | Auto-skill generation | High | Self-evolving system | |
 
@@ -736,9 +803,9 @@ def create_skill_update(traces):
 
 ---
 
-*Version: 2.1*
-*Updated: 2025-12-28*
-*Status: Expert-backed design, ready for implementation*
+*Version: 2.2*
+*Updated: 2025-12-30*
+*Status: Hooks implemented, ready for use*
 
 *Changelog from v1:*
 
@@ -778,3 +845,14 @@ def create_skill_update(traces):
 - Added create-init-script.sh for auto-generating init.sh by project type
 - Added require-dependencies.py enforcement hook (blocks src/ writes if deps missing)
 - Integrated dependency check into session entry protocol
+*2025-12-30 - Hooks Implementation (DESIGN-v2 Layer 2 Enforcement):*
+
+- Implemented 12 enforcement hooks (7 global + 5 project)
+- Created global-hook-setup skill (one-time machine setup)
+- Created project-hook-setup skill (per-project setup)
+- Global hooks: state transitions, git hygiene, outcome tracking, auto-linking, reminders
+- Project hooks: tests, health, dependencies, session entry, file verification
+- Utility scripts: feature-commit.sh, session-end.sh
+- Hooks read from .claude/config/project.json for project-specific settings
+- Integrated hook setup into initializer skill workflow
+- All hooks follow Claude Code best practices (exit code 2 for blocking)

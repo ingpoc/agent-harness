@@ -14,20 +14,30 @@ Project setup and feature breakdown for INIT state.
 2. Detect project type: `scripts/detect-project.sh`
 3. Create init script: `scripts/create-init-script.sh`
 4. Check dependencies: `scripts/check-dependencies.sh`
-5. Analyze user requirements
-6. Break down into atomic features (INVEST criteria)
-7. Create feature-list.json: `scripts/create-feature-list.sh`
-8. Initialize progress tracking: `scripts/init-progress.sh`
+5. **Setup hooks**:
+   - Check: `~/.claude/hooks/verify-state-transition.py` exists
+   - If NO: Load `~/.claude/skills/global-hook-setup/SKILL.md` → Run `setup-global-hooks.sh`
+   - Check: `.claude/hooks/verify-tests.py` exists
+   - If NO: Load `.skills/project-hook-setup/SKILL.md` → Run `setup-project-hooks.sh`
+   - Verify both complete before continuing
+6. Analyze user requirements
+7. Break down into atomic features (INVEST criteria)
+8. Create feature-list.json: `scripts/create-feature-list.sh`
+9. Initialize progress tracking: `scripts/init-progress.sh`
 
 ## Exit Criteria (Code Verified)
 
 ```bash
-# All must pass
+# Original checks
 [ -f ".claude/progress/feature-list.json" ]
 [ -f ".claude/config/project.json" ]
 scripts/check-dependencies.sh --quiet
 jq '.features | length > 0' .claude/progress/feature-list.json
 jq '.features[0] | has("id", "description", "priority", "status")' .claude/progress/feature-list.json
+
+# Hook verification
+[ -x "~/.claude/hooks/verify-state-transition.py" ]  # Global hooks
+[ -x ".claude/hooks/verify-tests.py" ]                 # Project hooks
 ```
 
 ## Scripts

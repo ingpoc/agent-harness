@@ -1,17 +1,25 @@
 {
-  "current_feature": {
-    "id": "feat-weave-integration",
-    "title": "Integrate Weave into context-graph MCP",
-    "status": "pending",
-    "priority": "medium",
-    "description": "Add Weave tracing to context-graph MCP server for enhanced decision trace observability"
-  },
-  "completed": [],
-  "pending": [
+  "current_feature": null,
+  "completed": [
     {
-      "id": "feat-weave-integration",
-      "title": "Integrate Weave into context-graph MCP",
-      "priority": "medium"
+      "id": "feat-hook-setup-skills",
+      "title": "Create two hook-setup skills for DESIGN-v2 enforcement",
+      "status": "completed",
+      "location": ".skills/global-hook-setup/, .skills/project-hook-setup/",
+      "description": "Implemented 12 hooks (7 global + 5 project) with setup skills"
+    },
+    {
+      "id": "feat-orchestrator-prompt",
+      "title": "Create single orchestrator prompt",
+      "status": "completed",
+      "location": "~/.claude/prompts/orchestrator.md"
+    },
+    {
+      "id": "feat-context-graph-review",
+      "title": "Review Weave vs VoyageAI for context-graph",
+      "status": "completed",
+      "decision": "Keep current implementation (ChromaDB + Voyage)"
     }
-  ]
+  ],
+  "pending": []
 }
